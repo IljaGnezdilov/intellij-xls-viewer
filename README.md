@@ -1,5 +1,8 @@
 # XLS Viewer
 
+[![JetBrains Marketplace](https://img.shields.io/badge/Marketplace-XLS%20Viewer-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/36262-xls-viewer)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Плагин для IntelliJ IDEA **2026.2+ (build 262)** и **2026.3**: просмотр старых книг
 Excel 97–2003 (`.xls`, BIFF8) с отображением форматирования так, как его показывает сам
 Excel, и сравнение двух книг в режиме диффа (в том числе из Git).
@@ -13,7 +16,7 @@ Excel, и сравнение двух книг в режиме диффа (в т
 ## Установка
 
 **Из IDE:** **Settings → Plugins → Marketplace** → найти «XLS Viewer» → Install →
-перезапустить IDE.
+перезапустить IDE. Страница плагина — [plugins.jetbrains.com/plugin/36262-xls-viewer](https://plugins.jetbrains.com/plugin/36262-xls-viewer).
 
 **Вручную** (архив из [Releases](https://github.com/IljaGnezdilov/intellij-xls-viewer/releases)):
 
