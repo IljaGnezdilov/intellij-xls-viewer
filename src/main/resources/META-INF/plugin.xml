@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<idea-plugin>
+    <id>org.cprime.xlsviewer</id>
+    <name>XLS Viewer</name>
+    <version>0.3.8</version>
+    <vendor url="https://c-prime.org">c-prime</vendor>
+
+    <description><![CDATA[
+        <p>Read-only viewer for legacy Excel 97-2003 workbooks (<code>.xls</code>).</p>
+        <p>Renders cell, row and column formatting the way Excel does: fonts, fills, borders,
+        alignment, text wrapping, merged cells, frozen panes, row heights, column widths and
+        number formats. Supports switching between worksheets with tabs and keyboard shortcuts.</p>
+    ]]></description>
+
+    <idea-version since-build="262"/>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileEditorProvider id="xls-viewer"
+                            implementation="org.cprime.xlsviewer.editor.XlsFileEditorProvider"/>
+        <diff.DiffTool implementation="org.cprime.xlsviewer.diff.XlsDiffTool"/>
+        <diff.impl.DiffToolSubstitutor implementation="org.cprime.xlsviewer.diff.XlsDiffSubstitutor"/>
+        <applicationService serviceImplementation="org.cprime.xlsviewer.XlsViewerSettings"/>
+    </extensions>
+</idea-plugin>
+
