@@ -12,8 +12,10 @@ Excel, и сравнение двух книг в режиме диффа (в т
 
 ## Установка
 
-Плагин не публикуется в JetBrains Marketplace, готовый архив лежит в
-[Releases](https://github.com/IljaGnezdilov/intellij-xls-viewer/releases):
+**Из IDE:** **Settings → Plugins → Marketplace** → найти «XLS Viewer» → Install →
+перезапустить IDE.
+
+**Вручную** (архив из [Releases](https://github.com/IljaGnezdilov/intellij-xls-viewer/releases)):
 
 1. Скачать `xls-viewer-<версия>.zip`.
 2. **Settings → Plugins → ⚙ → Install Plugin from Disk…** → выбрать архив.
@@ -147,7 +149,7 @@ gradlew -PidePath="D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" clean buil
 Значение `idePath` по умолчанию указывает на локальную установку автора, поэтому на другой
 машине его нужно передать явно через `-PidePath="<путь к IntelliJ IDEA>"`.
 
-Готовый архив: `build/distributions/xls-viewer-0.3.8.zip`.
+Готовый архив: `build/distributions/xls-viewer-0.3.9.zip`.
 
 Локальная установка без диалога (IDE должна быть закрыта):
 
