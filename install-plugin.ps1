@@ -1,5 +1,5 @@
 param(
-    [string]$Zip = (Join-Path $PSScriptRoot "build\distributions\xls-viewer-0.3.9.zip"),
+    [string]$Zip = (Join-Path $PSScriptRoot "build\distributions\xls-viewer-0.4.0.zip"),
     [string]$IdeConfigName = "IntelliJIdea2026.3"
 )
 

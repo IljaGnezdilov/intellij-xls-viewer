@@ -1,4 +1,4 @@
-# XLS Viewer
+﻿# XLS Viewer
 
 [![JetBrains Marketplace](https://img.shields.io/badge/Marketplace-XLS%20Viewer-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/36262-xls-viewer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -152,7 +152,7 @@ gradlew -PidePath="D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" clean buil
 Значение `idePath` по умолчанию указывает на локальную установку автора, поэтому на другой
 машине его нужно передать явно через `-PidePath="<путь к IntelliJ IDEA>"`.
 
-Готовый архив: `build/distributions/xls-viewer-0.3.9.zip`.
+Готовый архив: `build/distributions/xls-viewer-0.4.0.zip`.
 
 Локальная установка без диалога (IDE должна быть закрыта):
 
@@ -197,7 +197,7 @@ ui/      GridGeometry     префиксные суммы высот/ширин,
          XlsSheetTabs     вкладки листов с точками
          XlsTheme         цвета под тему IDE, «Цвета Excel», цвета диффа
 editor/  XlsFileEditorProvider / XlsFileEditor / XlsEditorPanel
-diff/    XlsDiffTool / XlsDiffSubstitutor   интеграция с DiffTool API платформы
+diff/    XlsDiffTool / XlsDiffToolRegistrar   интеграция с DiffTool API платформы
          XlsDiffViewer / XlsDiffPanel       две панели, синхронный скролл, вкладки
          SheetDiffer                        выравнивание листов/строк/столбцов, метки
          DiffSides                          синтетические SheetModel для панелей
@@ -208,10 +208,11 @@ diff/    XlsDiffTool / XlsDiffSubstitutor   интеграция с DiffTool API
 точные границы по сторонам в `JTable` не выражаются без костылей. BIFF8 ограничен
 65536×256, поэтому геометрия хранится массивами, а рисование идёт только по видимой области.
 
-Интеграция с диффом: `com.intellij.diff.DiffTool` + `com.intellij.diff.impl.DiffToolSubstitutor`.
-Подстановщик нужен потому, что встроенный бинарный дифф-инструмент регистрируется
-раньше плагинов и иначе выигрывает выбор; `SuppressiveDiffTool` для этого не подходит —
-он отключает инструмент глобально для всех файлов.
+Интеграция с диффом: плагин регистрирует `com.intellij.diff.DiffTool` программно
+(`XlsDiffToolRegistrar`) с `LoadingOrder.FIRST` — встроенный бинарный просмотрщик
+регистрируется платформой раньше плагинов и иначе выигрывает выбор, а у расширения
+`diff.DiffTool` нет атрибута `order`. Регистрация через публичный API расширений
+позволяет обойтись без внутренних классов платформы.
 
 ## Зависимости
 

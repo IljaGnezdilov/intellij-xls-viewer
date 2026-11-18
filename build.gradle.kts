@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.JavaExec
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
@@ -8,7 +9,7 @@ plugins {
 }
 
 group = "org.cprime"
-version = "0.3.9"
+version = "0.4.0"
 
 /**
  * IDE used to compile against. The release artifact is built against the oldest supported
@@ -33,13 +34,16 @@ dependencies {
     intellijPlatform {
         // Build against the IDE selected by -PidePath (defaults to the local 2026.3 install).
         local(idePath)
+        testFramework(TestFrameworkType.Platform)
     }
 
     implementation("org.apache.poi:poi:5.5.1")
 
     testImplementation(kotlin("test"))
+    testImplementation("junit:junit:4.13.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.11.4")
 }
 
 kotlin {
@@ -55,7 +59,7 @@ intellijPlatform {
     pluginConfiguration {
         id = "org.cprime.xlsviewer"
         name = "XLS Viewer"
-        version = "0.3.9"
+        version = "0.4.0"
 
         // The first sentence is what the Marketplace search card shows (about 40 characters),
         // so it must stay short and start with the value proposition.
@@ -85,10 +89,12 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-              <li>First release on JetBrains Marketplace.</li>
+              <li>Removed the internal platform API usage: the workbook diff tool is now registered
+              through the public extension API with <code>LoadingOrder.FIRST</code> instead of
+              <code>DiffToolSubstitutor</code>.</li>
+              <li>First release on JetBrains Marketplace (0.3.9).</li>
               <li>Selection outline is drawn as a clean rectangle around the selected range.</li>
               <li>Navigation pad with up/down/left/right arrows is a single 2x2 block without gaps.</li>
-              <li>Square 25x25 zoom buttons.</li>
               <li>One artifact for IntelliJ IDEA 2026.2 and 2026.3.</li>
             </ul>
         """.trimIndent()
@@ -116,11 +122,10 @@ intellijPlatform {
             local(idePath)
         }
 
-        // `com.intellij.diff.impl.DiffToolSubstitutor` is annotated @ApiStatus.Internal, but it is
-        // the only way to override the built-in binary diff tool for specific file types: the
-        // `diff.DiffTool` extension point does not support ordering. The single internal usage is
-        // therefore expected and must not fail the build; real compatibility problems still do.
+        // Fail on internal API usages as well: the Marketplace review rejects them, so a regression
+        // must break the build instead of silently passing.
         failureLevel = listOf(
+            VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES,
             VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
             VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
             VerifyPluginTask.FailureLevel.INVALID_PLUGIN,

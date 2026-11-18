@@ -8,8 +8,11 @@ import com.intellij.openapi.project.DumbAware
 import org.cprime.xlsviewer.XlsViewerBundle
 
 /**
- * Diff tool for legacy Excel workbooks. Registered as `com.intellij.diff.DiffTool` and
- * additionally substituted over the built-in binary diff tool (see [XlsDiffSubstitutor]).
+ * Diff tool for legacy Excel workbooks.
+ *
+ * It is registered at runtime in front of the built-in tools by [XlsDiffToolRegistrar]: the
+ * platform opens the first tool that accepts the request, and the built-in binary viewer would
+ * otherwise win for every binary file.
  */
 class XlsDiffTool : FrameDiffTool, DumbAware {
 

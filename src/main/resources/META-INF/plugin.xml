@@ -2,7 +2,7 @@
 <idea-plugin url="https://github.com/IljaGnezdilov/intellij-xls-viewer">
     <id>org.cprime.xlsviewer</id>
     <name>XLS Viewer</name>
-    <version>0.3.9</version>
+    <version>0.4.0</version>
     <vendor url="https://c-prime.org" email="ilja_gnezdilov@mail.ru">c-prime</vendor>
 
     <description><![CDATA[
@@ -20,8 +20,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <fileEditorProvider id="xls-viewer"
                             implementation="org.cprime.xlsviewer.editor.XlsFileEditorProvider"/>
-        <diff.DiffTool implementation="org.cprime.xlsviewer.diff.XlsDiffTool"/>
-        <diff.impl.DiffToolSubstitutor implementation="org.cprime.xlsviewer.diff.XlsDiffSubstitutor"/>
+        <postStartupActivity implementation="org.cprime.xlsviewer.diff.XlsDiffToolRegistrar"/>
         <applicationService serviceImplementation="org.cprime.xlsviewer.XlsViewerSettings"/>
     </extensions>
 </idea-plugin>
