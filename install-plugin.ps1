@@ -1,14 +1,28 @@
 param(
-    [string]$Zip = (Join-Path $PSScriptRoot "build\distributions\xls-viewer-0.4.0.zip"),
+    [string]$Zip,
     [string]$IdeConfigName = "IntelliJIdea2026.3"
 )
 
 $ErrorActionPreference = "Stop"
 
+# The version is not spelled out here: pick the newest archive produced by `gradlew buildPlugin`.
+if (-not $Zip) {
+    $Zip = Get-ChildItem (Join-Path $PSScriptRoot "build\distributions\xls-viewer-*.zip") -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1 -ExpandProperty FullName
+    if ($Zip) { Write-Host "Using $(Split-Path $Zip -Leaf)" }
+}
+
 $pluginsRoot = Join-Path $env:APPDATA "JetBrains\$IdeConfigName\plugins"
 if (-not (Test-Path (Split-Path $pluginsRoot -Parent))) {
     Write-Host "IDE config not found: $(Split-Path $pluginsRoot -Parent)" -ForegroundColor Red
     Write-Host "Use -IdeConfigName IntelliJIdea2026.2 or IntelliJIdea2026.3." -ForegroundColor Yellow
+    exit 1
+}
+
+if (-not $Zip) {
+    Write-Host "No plugin archive found in build\distributions." -ForegroundColor Red
+    Write-Host "Run 'gradlew buildPlugin' first." -ForegroundColor Yellow
     exit 1
 }
 

@@ -2,7 +2,6 @@
 <idea-plugin url="https://github.com/IljaGnezdilov/intellij-xls-viewer">
     <id>org.cprime.xlsviewer</id>
     <name>XLS Viewer</name>
-    <version>0.4.0</version>
     <vendor url="https://c-prime.org" email="ilja_gnezdilov@mail.ru">c-prime</vendor>
 
     <description><![CDATA[

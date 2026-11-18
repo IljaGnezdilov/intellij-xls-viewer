@@ -59,7 +59,7 @@ intellijPlatform {
     pluginConfiguration {
         id = "org.cprime.xlsviewer"
         name = "XLS Viewer"
-        version = "0.4.0"
+        // `version` defaults to the project version above; keep it defined in one place only.
 
         // The first sentence is what the Marketplace search card shows (about 40 characters),
         // so it must stay short and start with the value proposition.
