@@ -6,6 +6,10 @@ Excel, и сравнение двух книг в режиме диффа (в т
 
 Плагин только читает файлы и ничего не изменяет.
 
+![Просмотр книги](docs/viewer.png)
+
+![Сравнение двух книг](docs/diff.png)
+
 ## Установка
 
 Плагин не публикуется в JetBrains Marketplace, готовый архив лежит в
@@ -145,8 +149,7 @@ gradlew -PidePath="D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" clean buil
 
 Готовый архив: `build/distributions/xls-viewer-0.3.8.zip`.
 
-Установка: **Settings → Plugins → ⚙ → Install Plugin from Disk…** → выбрать архив →
-перезапустить IDE. Либо закрыть IDE и выполнить:
+Локальная установка без диалога (IDE должна быть закрыта):
 
 ```powershell
 .\install-plugin.ps1                                # 2026.3
