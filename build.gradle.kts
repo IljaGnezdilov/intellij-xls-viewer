@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "org.cprime"
-version = "0.5.0"
+version = "0.5.1"
 
 /**
  * IDE used to compile against. The release artifact is built against the oldest supported
@@ -118,13 +118,14 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-              <li>Works on IntelliJ IDEA 2025.2 and newer; one artifact covers 2025.2 through 2026.3.</li>
-              <li>Built against 2025.2 (build 252) with Java 21 bytecode, so older IDEs load it too.</li>
-              <li>Removed the internal platform API usage: the workbook diff tool is now registered
-              through the public extension API with <code>LoadingOrder.FIRST</code> instead of
-              <code>DiffToolSubstitutor</code>.</li>
-              <li>Selection outline is drawn as a clean rectangle around the selected range.</li>
-              <li>Navigation pad with up/down/left/right arrows is a single 2x2 block without gaps.</li>
+              <li>Empty differences are hidden by default: cells that are empty on both sides
+              (formatting-only cells, empty formula results, whitespace-only text) are no longer
+              marked, counted or kept visible in the <b>Only changes</b> mode. The status bar
+              shows how many empty differences were hidden.</li>
+              <li>New <b>Show empty changes</b> checkbox brings them back and is remembered
+              between sessions.</li>
+              <li>Added and deleted rows and columns are still shown even when they contain
+              no values.</li>
             </ul>
         """.trimIndent()
 

@@ -116,7 +116,7 @@ Diff flow: `XlsDiffContents` reads both sides (handling LFS pointers and OLE2 ch
 
 ## Version and metadata
 
-`version = "0.5.0"` in `build.gradle.kts` is the **only** place with the version. Everything
+`version = "0.5.1"` in `build.gradle.kts` is the **only** place with the version. Everything
 else derives from it:
 
 - `patchPluginXml` injects `<version>`, `<description>`, `<change-notes>`, vendor and
