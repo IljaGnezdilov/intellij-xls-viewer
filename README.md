@@ -5,7 +5,7 @@
 [![JetBrains Marketplace](https://img.shields.io/badge/Marketplace-XLS%20Viewer-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/36262-xls-viewer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Plugin for IntelliJ IDEA **2026.2+ (build 262)** and **2026.3**: views legacy
+Plugin for IntelliJ IDEA **2025.2+ (build 252)**: views legacy
 Excel 97–2003 workbooks (`.xls`, BIFF8) and renders the formatting the way Excel
 shows it, and compares two workbooks in a diff view (including from Git).
 
@@ -27,7 +27,7 @@ Install → restart the IDE. Plugin page —
 2. **Settings → Plugins → ⚙ → Install Plugin from Disk…** → select the archive.
 3. Restart the IDE.
 
-The same archive works for both 2026.2 and 2026.3.
+The same archive works on IntelliJ IDEA 2025.2 through 2026.3 and newer.
 
 License — [MIT](LICENSE), third-party libraries — [THIRD-PARTY.md](THIRD-PARTY.md).
 
@@ -145,28 +145,32 @@ git lfs pull
 
 ## Build and installation
 
-Requires IntelliJ IDEA **2026.2.4+ (build 262)** or **2026.3 (build 263)** and
-JDK 25. The same artifact installs into both versions. The build uses the local
-IDE installation, no distribution download is needed.
+Requires IntelliJ IDEA **2025.2+ (build 252)**. The artifact is compiled against
+2025.2, so one archive runs on 2025.2 through 2026.3 and newer. Compilation
+needs JDK 25, but the bytecode is deliberately **Java 21**: 2025.2–2026.1 run on
+JBR 21 and cannot load Java 25 classes.
+
+The IntelliJ Platform Gradle Plugin downloads the 2025.2 IDE on the first build
+(~1.3 GB), no manual IDE installation is needed.
 
 ```bash
-# builds against 2026.3 by default (path set in build.gradle.kts)
-gradlew buildPlugin
+# release build: compiles against 2025.2, the minimum supported version
+gradlew clean build buildPlugin
 
-# release build against the minimum supported version - 2026.2:
-gradlew -PidePath="D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" clean build buildPlugin
+# day-to-day development against the locally installed IDE instead
+gradlew -PtargetIde=local "-PidePath=<path to IntelliJ IDEA>" runIde
 ```
 
-The default `idePath` value points to the author's local installation, so on
-another machine it must be passed explicitly via
-`-PidePath="<path to IntelliJ IDEA>"`.
+The default `idePath` value points to the author's local installation, so with
+`-PtargetIde=local` it must be passed explicitly on another machine.
 
 Resulting archive: `build/distributions/xls-viewer-<version>.zip`.
 
 Local installation without a dialog (the IDE must be closed):
 
 ```powershell
-.\install-plugin.ps1                                    # 2026.3
+.\install-plugin.ps1                                    # newest local IDE (2026.3)
+.\install-plugin.ps1 -IdeConfigName IntelliJIdea2025.2  # 2025.2
 .\install-plugin.ps1 -IdeConfigName IntelliJIdea2026.2  # 2026.2
 ```
 

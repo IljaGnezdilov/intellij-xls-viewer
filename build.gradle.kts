@@ -1,6 +1,9 @@
 import org.gradle.api.tasks.JavaExec
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     id("java")
@@ -9,16 +12,30 @@ plugins {
 }
 
 group = "org.cprime"
-version = "0.4.0"
+version = "0.5.0"
 
 /**
  * IDE used to compile against. The release artifact is built against the oldest supported
- * IDE (2026.2) so that one jar works on 2026.2 and 2026.3:
+ * IDE (2025.2, build 252) so that one jar works on 2025.2 through 2026.3 and newer:
  *
- *   gradlew -PidePath="D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" clean build buildPlugin
+ *   gradlew clean build buildPlugin
  *
- * The default points at the newer installation.
+ * The download of that distribution is handled by the IntelliJ Platform Gradle Plugin.
+ * `-PtargetIde=local` builds against the locally installed IDE selected by `-PidePath`
+ * instead, which is handy for day-to-day development against the current release.
  */
+val targetIde: String = providers.gradleProperty("targetIde").getOrElse("2025.2")
+
+/**
+ * IntelliJ IDEA Community is not published for 2025.3 and newer; those releases ship as the
+ * unified "IntelliJ IDEA" product.
+ */
+fun communityAvailable(version: String): Boolean {
+    val major = version.substringBefore('.').toIntOrNull() ?: return false
+    val minor = version.substringAfter('.', "0").substringBefore('.').toIntOrNull() ?: 0
+    return major < 2025 || (major == 2025 && minor <= 2)
+}
+
 val idePath: String = providers.gradleProperty("idePath").getOrElse(
     "D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA Community Edition",
 )
@@ -32,8 +49,17 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        // Build against the IDE selected by -PidePath (defaults to the local 2026.3 install).
-        local(idePath)
+        // Build against the oldest supported IDE, not the local one: APIs present in that build
+        // are guaranteed to exist in every newer build in range. Use -PtargetIde=local to compile
+        // against the locally installed IDE instead.
+        if (targetIde == "local") {
+            local(idePath)
+        } else if (communityAvailable(targetIde)) {
+            create(IntelliJPlatformType.IntellijIdeaCommunity, targetIde)
+        } else {
+            // Newer releases ship as the unified "IntelliJ IDEA" product.
+            create(IntelliJPlatformType.IntellijIdea, targetIde)
+        }
         testFramework(TestFrameworkType.Platform)
     }
 
@@ -47,12 +73,15 @@ dependencies {
 }
 
 kotlin {
+    // JDK 25 compiles the code; the class files must stay at 21. IntelliJ 2025.2-2026.1 run on
+    // JBR 21, so a 25 target would fail there with UnsupportedClassVersionError. 2026.2+ is the
+    // first platform on Java 25, and 21 bytecode runs there as well.
     jvmToolchain(25)
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 intellijPlatform {
@@ -82,20 +111,20 @@ intellijPlatform {
               <li>"Only changes" mode collapses unchanged rows and columns and marks skipped ranges with dashed gaps</li>
               <li><code>Alt+Arrow</code> and <code>F7</code> / <code>Shift+F7</code> navigation between changes</li>
             </ul>
-            <p>Requires IntelliJ IDEA 2026.2 or newer. The plugin only reads workbooks and never modifies them.
+            <p>Requires IntelliJ IDEA 2025.2 or newer. The plugin only reads workbooks and never modifies them.
             Source code and issue tracker: <a href="https://github.com/IljaGnezdilov/intellij-xls-viewer">GitHub</a>.
             Licensed under MIT.</p>
         """.trimIndent()
 
         changeNotes = """
             <ul>
+              <li>Works on IntelliJ IDEA 2025.2 and newer; one artifact covers 2025.2 through 2026.3.</li>
+              <li>Built against 2025.2 (build 252) with Java 21 bytecode, so older IDEs load it too.</li>
               <li>Removed the internal platform API usage: the workbook diff tool is now registered
               through the public extension API with <code>LoadingOrder.FIRST</code> instead of
               <code>DiffToolSubstitutor</code>.</li>
-              <li>First release on JetBrains Marketplace (0.3.9).</li>
               <li>Selection outline is drawn as a clean rectangle around the selected range.</li>
               <li>Navigation pad with up/down/left/right arrows is a single 2x2 block without gaps.</li>
-              <li>One artifact for IntelliJ IDEA 2026.2 and 2026.3.</li>
             </ul>
         """.trimIndent()
 
@@ -106,7 +135,7 @@ intellijPlatform {
         }
 
         ideaVersion {
-            sinceBuild = "262"
+            sinceBuild = "252"
         }
     }
 
@@ -117,15 +146,19 @@ intellijPlatform {
     }
 
     pluginVerification {
-        // Verify against the local IDE selected by -PidePath instead of downloading distributions.
+        // Check both ends of the supported range plus the current release. The compile target is
+        // 2025.2, so verifying it proves the artifact is binary compatible with the minimum.
         ides {
-            local(idePath)
+            create(IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
+            create(IntelliJPlatformType.IntellijIdea, "2026.2")
+            create(IntelliJPlatformType.IntellijIdea, "2026.3")
         }
 
-        // Fail on internal API usages as well: the Marketplace review rejects them, so a regression
-        // must break the build instead of silently passing.
+        // Fail on internal and deprecated API usages as well: the Marketplace review rejects the
+        // former, so a regression must break the build instead of silently passing.
         failureLevel = listOf(
             VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES,
+            VerifyPluginTask.FailureLevel.DEPRECATED_API_USAGES,
             VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
             VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
             VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
@@ -166,6 +199,20 @@ tasks {
     compileKotlin {
         compilerOptions {
             freeCompilerArgs.add("-Xjsr305=strict")
+            jvmTarget.set(JvmTarget.JVM_21)
+            // 2025.2 bundles Kotlin stdlib 2.1.20 and the stdlib is not packaged with the plugin.
+            // Pinning the language/API level keeps the compiler from emitting calls to newer stdlib
+            // declarations that would only fail at runtime on the oldest supported IDE.
+            languageVersion.set(KotlinVersion.KOTLIN_2_1)
+            apiVersion.set(KotlinVersion.KOTLIN_2_1)
+        }
+    }
+
+    compileTestKotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+            languageVersion.set(KotlinVersion.KOTLIN_2_1)
+            apiVersion.set(KotlinVersion.KOTLIN_2_1)
         }
     }
 }

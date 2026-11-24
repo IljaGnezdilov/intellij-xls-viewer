@@ -9,7 +9,7 @@ build, change and ship the plugin without breaking it.
 IntelliJ IDEA plugin **XLS Viewer** (`org.cprime.xlsviewer`, group `org.cprime`): a read-only
 viewer for legacy Excel 97–2003 workbooks (`.xls`, BIFF8) plus a two-workbook diff that is
 picked up by the platform diff view for Git and file comparisons. One artifact serves
-IntelliJ IDEA 2026.2+ (`since-build=262`) and 2026.3.
+IntelliJ IDEA 2025.2+ (`since-build=252`), i.e. 2025.2 through 2026.3 and newer.
 
 ## Non-negotiable constraints
 
@@ -19,7 +19,14 @@ IntelliJ IDEA 2026.2+ (`since-build=262`) and 2026.3.
   `XlsDiffToolRegistrar`; do not reintroduce `com.intellij.diff.impl.DiffToolSubstitutor`
   or `ApplicationInitializedListener`.
 - Do not rename the plugin id, the `org.cprime.xlsviewer` package or the vendor metadata.
-- Releases must stay compatible with build 262: build them against the 2026.2 IDE.
+- Releases must stay compatible with **build 252**: compile against the 2025.2 IDE.
+- **Bytecode target is Java 21, never 25.** 2025.2–2026.1 run on JBR 21; Java 25 classes fail
+  there with `UnsupportedClassVersionError` before any plugin code runs. JDK 25 is only the
+  compiler (`jvmToolchain(25)` + `jvmTarget = JVM_21`). The Verifier catches this only because
+  2025.2 is in its matrix — do not drop it.
+- **Kotlin API level is pinned to 2.1** (`apiVersion`/`languageVersion` on `compileKotlin`):
+  2025.2 bundles stdlib 2.1.20 and the stdlib is not packaged with the plugin. Raising it
+  without raising the supported IDE range breaks 2025.2 at runtime with `NoSuchMethodError`.
 - UI invariants that were fixed deliberately:
   - the selection frame is a clean rectangle drawn only inside the selected block;
   - the `▲▼◀▶` navigation pad is one 2×2 block without gaps (50×50, four 25×25 cells);
@@ -30,11 +37,16 @@ IntelliJ IDEA 2026.2+ (`since-build=262`) and 2026.3.
 ## Environment
 
 - Windows, PowerShell; invoke `.\gradlew.bat`.
-- JDK 25 (`jvmToolchain(25)`); Gradle wrapper 9.4.1; IntelliJ Platform Gradle Plugin 2.20.1;
-  Kotlin 2.4.21; Apache POI 5.5.1 (HSSF).
-- Two local IDEs are used:
-  - default `-PidePath`: `D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA Community Edition` (2026.3);
-  - release builds: `D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA` (2026.2).
+- JDK 25 (`jvmToolchain(25)`) compiling to Java 21 bytecode; Gradle wrapper 9.4.1;
+  IntelliJ Platform Gradle Plugin 2.20.1; Kotlin 2.4.21 (language/API 2.1); Apache POI 5.5.1
+  (HSSF).
+- By default the build targets the **downloaded 2025.2** (build 252) distribution, so the
+  artifact is binary compatible with every supported IDE. `-PtargetIde=local` switches to the
+  locally installed IDE behind `-PidePath` (default
+  `D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA Community Edition`) for the dev loop.
+- IntelliJ IDEA Community is not published after 2025.2: for newer releases the build and the
+  Verifier use the unified `IntelliJPlatformType.IntellijIdea` product
+  (`communityAvailable(...)` in `build.gradle.kts` picks the right one).
 
 ## Commands
 
@@ -43,15 +55,16 @@ IntelliJ IDEA 2026.2+ (`since-build=262`) and 2026.3.
 | Compile | `.\gradlew.bat compileKotlin` |
 | All tests | `.\gradlew.bat test` |
 | One test | `.\gradlew.bat test --tests "org.cprime.xlsviewer.diff.SheetDifferTest"` |
-| Default build (2026.3) | `.\gradlew.bat buildPlugin` |
-| Release build (2026.2) | `.\gradlew.bat "-PidePath=D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" clean build buildPlugin` |
-| Plugin Verifier | `.\gradlew.bat "-PidePath=D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" verifyPlugin` |
+| Release build (2025.2, default) | `.\gradlew.bat clean build buildPlugin` |
+| Dev build against the local IDE | `.\gradlew.bat -PtargetIde=local buildPlugin` |
+| Plugin Verifier (2025.2, 2026.2, 2026.3) | `.\gradlew.bat verifyPlugin` |
 | Metadata/structure checks | `.\gradlew.bat verifyPluginStructure verifyPluginProjectConfiguration` |
 | Sandbox with a demo file | `.\gradlew.bat runIde -Psample=build/samples/formatting.xls` |
 | Regenerate demo workbooks | `.\gradlew.bat generateSamples` |
 
-Quote the `-PidePath` argument in PowerShell: the path contains spaces. Artifact:
-`build/distributions/xls-viewer-<version>.zip`.
+Quote the `-PidePath` argument in PowerShell: the path contains spaces. The first build against
+2025.2 downloads that distribution (~1.3 GB); the Verifier downloads 2026.2 and 2026.3 as well.
+Artifact: `build/distributions/xls-viewer-<version>.zip`.
 
 ## Source map
 
@@ -98,7 +111,7 @@ Diff flow: `XlsDiffContents` reads both sides (handling LFS pointers and OLE2 ch
 
 ## Version and metadata
 
-`version = "0.4.0"` in `build.gradle.kts` is the **only** place with the version. Everything
+`version = "0.5.0"` in `build.gradle.kts` is the **only** place with the version. Everything
 else derives from it:
 
 - `patchPluginXml` injects `<version>`, `<description>`, `<change-notes>`, vendor and
@@ -129,8 +142,8 @@ it), and leave `plugin.xml` alone. `pluginConfiguration.id/name` are still requi
 Only when explicitly asked to release:
 
 1. Bump `version`, write `changeNotes` in `build.gradle.kts`.
-2. Release build against 2026.2 (command above); tests must be green.
-3. `verifyPlugin` against 2026.2 and, for the 2026.3 report, the default `idePath`.
+2. Release build against 2025.2 (the default command); tests must be green.
+3. `verifyPlugin` against 2025.2, 2026.2 and 2026.3 (configured in `pluginVerification`).
    Requirements: **Compatible, 0 internal API usages, 0 deprecated API usages**.
 4. `git tag -a v<version>` and `gh release create v<version> "build/distributions/xls-viewer-<version>.zip" --title ... --notes-file ...`.
 5. Marketplace upload is a browser action on the plugin page (artifact is >5 MiB, so the upload
@@ -143,8 +156,13 @@ Only when explicitly asked to release:
 - `buildSearchableOptions` is disabled on purpose; do not re-enable it.
 - `kotlin.stdlib.default.dependency=false` — the Kotlin stdlib ships with the platform; never
   bundle a second copy.
-- `idea-version since-build="262"` is set explicitly. Removing it would default to the major of
-  the build IDE (263 when building against 2026.3) and silently drop 2026.2 support.
+- `idea-version since-build="252"` is set explicitly. Removing it would default to the major of
+  the build IDE (263 when building against 2026.3) and silently drop every older IDE.
+- Java target 21 and Kotlin API 2.1 are the floor set by 2025.2 (JBR 21, stdlib 2.1.20). Kotlin
+  warns that language version 2.1 is deprecated; that warning is expected here and can only be
+  removed by raising the minimum IDE. Do not silence it by bumping the version.
+- Compiling against 2025.2 is what guarantees binary compatibility; `-PtargetIde=local` builds
+  are for the dev loop only and must never be published.
 - The configuration cache is disabled for the platform plugin; do not enable it blindly.
 - `Log4j API could not find a logging provider` on the first parse is harmless.
 - `install-plugin.ps1` needs the target IDE closed: it fails fast when plugin jars are locked.

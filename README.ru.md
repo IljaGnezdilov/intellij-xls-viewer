@@ -5,7 +5,7 @@
 [![JetBrains Marketplace](https://img.shields.io/badge/Marketplace-XLS%20Viewer-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/36262-xls-viewer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Плагин для IntelliJ IDEA **2026.2+ (build 262)** и **2026.3**: просмотр старых книг
+Плагин для IntelliJ IDEA **2025.2+ (build 252)**: просмотр старых книг
 Excel 97–2003 (`.xls`, BIFF8) с отображением форматирования так, как его показывает сам
 Excel, и сравнение двух книг в режиме диффа (в том числе из Git).
 
@@ -28,7 +28,7 @@ Excel, и сравнение двух книг в режиме диффа (в т
 2. **Settings → Plugins → ⚙ → Install Plugin from Disk…** → выбрать архив.
 3. Перезапустить IDE.
 
-Один и тот же архив подходит и для 2026.2, и для 2026.3.
+Один и тот же архив подходит для IntelliJ IDEA 2025.2–2026.3 и новее.
 
 Лицензия — [MIT](LICENSE), сторонние библиотеки — [THIRD-PARTY.md](THIRD-PARTY.md).
 
@@ -141,27 +141,31 @@ git lfs pull
 
 ## Сборка и установка
 
-Требуется IntelliJ IDEA **2026.2.4+ (build 262)** или **2026.3 (build 263)** и JDK 25.
-Один и тот же артефакт ставится в обе версии. Сборка идёт против локальной установки IDE,
-скачивать дистрибутив не нужно.
+Требуется IntelliJ IDEA **2025.2+ (build 252)**. Артефакт собирается против 2025.2, поэтому
+один архив работает на 2025.2–2026.3 и новее. Для компиляции нужен JDK 25, но байткод
+намеренно **Java 21**: 2025.2–2026.1 работают на JBR 21 и не смогут загрузить классы Java 25.
+
+Дистрибутив 2025.2 (около 1.3 ГБ) скачивает IntelliJ Platform Gradle Plugin при первой сборке,
+ставить IDE вручную не нужно.
 
 ```bash
-# по умолчанию собирается против 2026.3 (путь задан в build.gradle.kts)
-gradlew buildPlugin
+# релизная сборка: компиляция против 2025.2, минимальной поддерживаемой версии
+gradlew clean build buildPlugin
 
-# релизная сборка против минимальной поддерживаемой версии — 2026.2:
-gradlew -PidePath="D:/Program Files/JetBrains/Toolbox2/IntelliJ IDEA" clean build buildPlugin
+# повседневная разработка против локально установленной IDE
+gradlew -PtargetIde=local "-PidePath=<путь к IntelliJ IDEA>" runIde
 ```
 
 Значение `idePath` по умолчанию указывает на локальную установку автора, поэтому на другой
-машине его нужно передать явно через `-PidePath="<путь к IntelliJ IDEA>"`.
+машине при `-PtargetIde=local` его нужно передать явно.
 
 Готовый архив: `build/distributions/xls-viewer-<версия>.zip`.
 
 Локальная установка без диалога (IDE должна быть закрыта):
 
 ```powershell
-.\install-plugin.ps1                                # 2026.3
+.\install-plugin.ps1                                    # новая локальная IDE (2026.3)
+.\install-plugin.ps1 -IdeConfigName IntelliJIdea2025.2  # 2025.2
 .\install-plugin.ps1 -IdeConfigName IntelliJIdea2026.2  # 2026.2
 ```
 

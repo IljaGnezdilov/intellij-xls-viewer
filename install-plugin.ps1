@@ -16,7 +16,7 @@ if (-not $Zip) {
 $pluginsRoot = Join-Path $env:APPDATA "JetBrains\$IdeConfigName\plugins"
 if (-not (Test-Path (Split-Path $pluginsRoot -Parent))) {
     Write-Host "IDE config not found: $(Split-Path $pluginsRoot -Parent)" -ForegroundColor Red
-    Write-Host "Use -IdeConfigName IntelliJIdea2026.2 or IntelliJIdea2026.3." -ForegroundColor Yellow
+    Write-Host "Use -IdeConfigName IntelliJIdea2025.2, IntelliJIdea2026.2 or IntelliJIdea2026.3." -ForegroundColor Yellow
     exit 1
 }
 

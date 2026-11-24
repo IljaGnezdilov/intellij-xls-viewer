@@ -12,7 +12,7 @@
         markers, and unchanged rows and columns can be collapsed.</p>
     ]]></description>
 
-    <idea-version since-build="262"/>
+    <idea-version since-build="252"/>
 
     <depends>com.intellij.modules.platform</depends>
 
