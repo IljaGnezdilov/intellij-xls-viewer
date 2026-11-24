@@ -1,12 +1,12 @@
 package org.cprime.xlsviewer.parse
 
-import org.apache.poi.hssf.usermodel.HSSFCellStyle
-import org.apache.poi.hssf.usermodel.HSSFFont
-import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.ss.usermodel.BorderStyle
+import org.apache.poi.ss.usermodel.CellStyle
 import org.apache.poi.ss.usermodel.FillPatternType
+import org.apache.poi.ss.usermodel.Font
 import org.apache.poi.ss.usermodel.HorizontalAlignment
 import org.apache.poi.ss.usermodel.VerticalAlignment
+import org.apache.poi.ss.usermodel.Workbook
 import org.cprime.xlsviewer.model.BorderKind
 import org.cprime.xlsviewer.model.BorderSide
 import org.cprime.xlsviewer.model.Borders
@@ -20,8 +20,8 @@ import org.cprime.xlsviewer.model.VAlign
  * Converts the workbook XF/font tables into the immutable [StyleTable] used by the UI.
  */
 internal class StyleTableBuilder(
-    private val workbook: HSSFWorkbook,
-    private val palette: ColorPalette,
+    private val workbook: Workbook,
+    private val colors: StyleColors,
 ) {
     fun build(): StyleTable {
         val styleCount = runCatching { workbook.numCellStyles }.getOrDefault(1)
@@ -37,25 +37,23 @@ internal class StyleTableBuilder(
         return StyleTable(styles, default)
     }
 
-    private fun convert(index: Int, style: HSSFCellStyle): CellStyleModel {
+    private fun convert(index: Int, style: CellStyle): CellStyleModel {
         val font = runCatching { workbook.getFontAt(style.fontIndex) }.getOrNull()
-        val fill = runCatching {
-            if (style.fillPattern == FillPatternType.NO_FILL) {
-                null
-            } else {
-                palette.resolve(style.fillForegroundColor.toInt())
-            }
-        }.getOrNull()
+        val fill = if (runCatching { style.fillPattern }.getOrNull() == FillPatternType.NO_FILL) {
+            null
+        } else {
+            runCatching { colors.fill(style) }.getOrNull()
+        }
 
         return CellStyleModel(
             index = index,
             font = toFontModel(font),
             fillColor = fill,
             borders = Borders(
-                left = side(style, style.borderLeft, style.leftBorderColor),
-                right = side(style, style.borderRight, style.rightBorderColor),
-                top = side(style, style.borderTop, style.topBorderColor),
-                bottom = side(style, style.borderBottom, style.bottomBorderColor),
+                left = side(style, StyleSide.LEFT, runCatching { style.borderLeft }.getOrNull()),
+                right = side(style, StyleSide.RIGHT, runCatching { style.borderRight }.getOrNull()),
+                top = side(style, StyleSide.TOP, runCatching { style.borderTop }.getOrNull()),
+                bottom = side(style, StyleSide.BOTTOM, runCatching { style.borderBottom }.getOrNull()),
             ),
             hAlign = mapHorizontal(runCatching { style.alignment }.getOrNull()),
             vAlign = mapVertical(runCatching { style.verticalAlignment }.getOrNull()),
@@ -66,24 +64,23 @@ internal class StyleTableBuilder(
         )
     }
 
-    private fun toFontModel(font: HSSFFont?): FontModel {
+    private fun toFontModel(font: Font?): FontModel {
         if (font == null) return FontModel(name = "Arial", sizePt = 10f)
-        val color = runCatching { palette.resolve(font.color.toInt()) }.getOrNull()
         return FontModel(
-            name = runCatching { font.fontName }.getOrDefault("Arial") ?: "Arial",
+            name = runCatching { font.fontName }.getOrNull() ?: "Arial",
             sizePt = runCatching { font.fontHeightInPoints.toFloat() }.getOrDefault(10f),
             bold = runCatching { font.bold }.getOrDefault(false),
             italic = runCatching { font.italic }.getOrDefault(false),
             underline = runCatching { font.underline.toInt() != 0 }.getOrDefault(false),
             strikeout = runCatching { font.strikeout }.getOrDefault(false),
-            color = color,
+            color = runCatching { colors.font(font) }.getOrNull(),
         )
     }
 
-    private fun side(style: HSSFCellStyle, border: BorderStyle?, colorIndex: Short): BorderSide {
+    private fun side(style: CellStyle, side: StyleSide, border: BorderStyle?): BorderSide {
         val kind = mapBorder(border)
         if (kind == BorderKind.NONE) return BorderSide.NONE
-        val color = palette.resolve(colorIndex.toInt()) ?: 0
+        val color = runCatching { colors.border(style, side) }.getOrNull() ?: 0
         return BorderSide(kind, color)
     }
 
@@ -118,7 +115,7 @@ internal class StyleTableBuilder(
         VerticalAlignment.DISTRIBUTED -> VAlign.DISTRIBUTED
     }
 
-    /** BIFF stores rotation in degrees (0..180) or 255 for vertically stacked text. */
+    /** Both BIFF and OOXML store rotation in degrees (0..180) or 255 for vertically stacked text. */
     private fun normalizeRotation(rotation: Int): Int = when {
         rotation == 255 -> 0
         rotation in 0..180 -> rotation

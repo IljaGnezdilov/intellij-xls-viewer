@@ -1,8 +1,8 @@
-﻿package org.cprime.xlsviewer.diff
+package org.cprime.xlsviewer.diff
 
 import org.cprime.xlsviewer.model.CellRange
 import org.cprime.xlsviewer.model.DiffMark
-import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.parse.WorkbookParser
 import org.cprime.xlsviewer.tools.createClearedValuePair
 import org.cprime.xlsviewer.tools.createDiffPair
 import org.cprime.xlsviewer.tools.createEmptyCellsPair
@@ -153,8 +153,8 @@ class SheetDifferTest {
 
     private fun comparePair(pair: Pair<ByteArray, ByteArray>, ignoreEmptyChanges: Boolean): WorkbookDiff =
         WorkbookDiffer.compare(
-            XlsParser.open(pair.first, Locale.US),
-            XlsParser.open(pair.second, Locale.US),
+            WorkbookParser.open(pair.first, Locale.US),
+            WorkbookParser.open(pair.second, Locale.US),
             ignoreEmptyChanges = ignoreEmptyChanges,
         )
 }

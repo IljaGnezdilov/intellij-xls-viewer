@@ -7,7 +7,7 @@ import org.cprime.xlsviewer.XlsViewerBundle
 import javax.swing.JComponent
 
 /**
- * Our frame viewer for two `.xls` sides.
+ * Our frame viewer for two `.xls`/`.xlsx` sides.
  */
 class XlsDiffViewer(
     project: Project?,

@@ -27,12 +27,33 @@ class CellModel(
 /**
  * One physical row of a sheet. Rows without any cells are represented by `null`
  * in [SheetModel.rows] to keep sparse workbooks cheap.
+ *
+ * [cells] is trimmed to the last non-empty column of this row: an `.xlsx` sheet may be
+ * 16 384 columns wide, and allocating that many slots for every row would exhaust the heap.
  */
 class RowModel(
     val index: Int,
     val heightPx: Float,
     val hidden: Boolean,
-    val cells: Array<CellModel?>,
+    cells: Array<CellModel?>,
 ) {
-    val isEmpty: Boolean get() = cells.all { it == null }
+    val cells: Array<CellModel?> = trimTrailingEmpty(cells)
+
+    val isEmpty: Boolean get() = cells.isEmpty()
+
+    fun cellAt(col: Int): CellModel? = cells.getOrNull(col)
+
+    private fun trimTrailingEmpty(cells: Array<CellModel?>): Array<CellModel?> {
+        var last = cells.size - 1
+        while (last >= 0 && cells[last] == null) last--
+        return when {
+            last < 0 -> EMPTY
+            last == cells.size - 1 -> cells
+            else -> cells.copyOf(last + 1)
+        }
+    }
+
+    private companion object {
+        val EMPTY = emptyArray<CellModel?>()
+    }
 }

@@ -23,7 +23,7 @@ class LfsPointerTest {
     @Test
     fun `parser reports lfs pointer instead of a generic error`() {
         val exception = assertThrows(XlsLfsPointerException::class.java) {
-            XlsParser.open(pointer)
+            WorkbookParser.open(pointer)
         }
         assertEquals(30208L, exception.size)
         assertEquals(

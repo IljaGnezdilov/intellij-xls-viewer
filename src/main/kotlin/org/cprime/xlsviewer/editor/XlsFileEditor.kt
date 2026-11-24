@@ -12,7 +12,7 @@ import java.beans.PropertyChangeSupport
 import javax.swing.JComponent
 
 /**
- * Read-only spreadsheet editor for a single `.xls` file.
+ * Read-only spreadsheet editor for a single `.xls` or `.xlsx` file.
  */
 class XlsFileEditor(
     project: Project,

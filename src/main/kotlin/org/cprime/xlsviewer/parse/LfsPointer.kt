@@ -4,7 +4,7 @@ package org.cprime.xlsviewer.parse
 class XlsLfsPointerException(
     val oid: String?,
     val size: Long?,
-) : XlsParseException("The file is a Git LFS pointer (oid=${oid ?: "unknown"}, size=${size ?: -1})")
+) : WorkbookParseException("The file is a Git LFS pointer (oid=${oid ?: "unknown"}, size=${size ?: -1})")
 
 /**
  * Git LFS stores a short text stub in the repository instead of the real file:

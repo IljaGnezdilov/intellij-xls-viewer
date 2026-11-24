@@ -1,22 +1,43 @@
 package org.cprime.xlsviewer.tools
 
 import org.apache.poi.hssf.usermodel.HSSFCellStyle
-import org.apache.poi.hssf.usermodel.HSSFRow
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
-import org.apache.poi.hssf.util.HSSFColor
 import org.apache.poi.ss.usermodel.FillPatternType
+import org.apache.poi.ss.usermodel.IndexedColors
+import org.apache.poi.ss.usermodel.Row
+import org.apache.poi.ss.usermodel.Workbook
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.ByteArrayOutputStream
 
 /**
  * Deterministic workbook pairs used by diff tests and for manual checks.
  * Run with: gradlew generateSamples
  */
-fun createDiffPair(): Pair<ByteArray, ByteArray> = buildDataWorkbook(old = true) to buildDataWorkbook(old = false)
+fun createDiffPair(): Pair<ByteArray, ByteArray> =
+    buildDataWorkbook(old = true, workbook = HSSFWorkbook()) to buildDataWorkbook(old = false, workbook = HSSFWorkbook())
+
+fun createDiffPairXlsx(): Pair<ByteArray, ByteArray> =
+    buildDataWorkbook(old = true, workbook = XSSFWorkbook()) to buildDataWorkbook(old = false, workbook = XSSFWorkbook())
+
+/** Same content in two different containers: the diff must only report the changed value. */
+fun createMixedPair(changed: Boolean): Pair<ByteArray, ByteArray> =
+    buildSimpleWorkbook(HSSFWorkbook(), value = 1.0) to buildSimpleWorkbook(XSSFWorkbook(), value = if (changed) 2.0 else 1.0)
 
 fun createFormattingPair(): Pair<ByteArray, ByteArray> = buildStyleWorkbook(changeColor = false) to buildStyleWorkbook(changeColor = true)
 
-private fun buildDataWorkbook(old: Boolean): ByteArray {
-    val workbook = HSSFWorkbook()
+private fun buildSimpleWorkbook(workbook: Workbook, value: Double): ByteArray {
+    try {
+        val sheet = workbook.createSheet("Mixed")
+        writeRow(sheet.createRow(0), "A", "B", "C")
+        writeRow(sheet.createRow(1), "a1", value, "c1")
+        writeRow(sheet.createRow(2), "a2", 2.0, "c2")
+        return write(workbook)
+    } finally {
+        workbook.close()
+    }
+}
+
+private fun buildDataWorkbook(old: Boolean, workbook: Workbook): ByteArray {
     try {
         val data = workbook.createSheet("Данные")
         var rowIndex = 0
@@ -52,7 +73,7 @@ private fun buildStyleWorkbook(changeColor: Boolean): ByteArray {
         val sheet = workbook.createSheet("Стиль")
         val font = workbook.createFont().apply {
             bold = true
-            if (changeColor) color = HSSFColor.HSSFColorPredefined.RED.index
+            if (changeColor) color = IndexedColors.RED.index
         }
         val style = workbook.createCellStyle().apply { setFont(font) }
         sheet.createRow(0).createCell(0).apply {
@@ -243,12 +264,12 @@ private fun formattingOnlyStyle(workbook: HSSFWorkbook): HSSFCellStyle {
     val font = workbook.createFont().apply { italic = true }
     return workbook.createCellStyle().apply {
         setFont(font)
-        fillForegroundColor = HSSFColor.HSSFColorPredefined.GREY_25_PERCENT.index
+        fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
         fillPattern = FillPatternType.SOLID_FOREGROUND
     }
 }
 
-private fun writeRow(row: HSSFRow, vararg values: Any) {
+private fun writeRow(row: Row, vararg values: Any) {
     values.forEachIndexed { index, value ->
         val cell = row.createCell(index)
         when (value) {
@@ -260,7 +281,7 @@ private fun writeRow(row: HSSFRow, vararg values: Any) {
     }
 }
 
-private fun write(workbook: HSSFWorkbook): ByteArray {
+private fun write(workbook: Workbook): ByteArray {
     val buffer = ByteArrayOutputStream()
     workbook.write(buffer)
     return buffer.toByteArray()

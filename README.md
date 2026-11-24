@@ -5,9 +5,10 @@
 [![JetBrains Marketplace](https://img.shields.io/badge/Marketplace-XLS%20Viewer-blue?logo=jetbrains)](https://plugins.jetbrains.com/plugin/36262-xls-viewer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Plugin for IntelliJ IDEA **2025.2+ (build 252)**: views legacy
-Excel 97–2003 workbooks (`.xls`, BIFF8) and renders the formatting the way Excel
-shows it, and compares two workbooks in a diff view (including from Git).
+Plugin for IntelliJ IDEA **2025.2+ (build 252)**: views Excel workbooks —
+legacy `.xls` (BIFF8) and modern `.xlsx` — and renders the formatting the way
+Excel shows it, and compares two workbooks in a diff view (including from Git)
+in the same grid, markers and "Only changes" mode.
 
 The plugin only reads files and never modifies them.
 
@@ -54,6 +55,7 @@ License — [MIT](LICENSE), third-party libraries — [THIRD-PARTY.md](THIRD-PAR
 - switch with the tabs at the bottom, the drop-down list in the toolbar, or
   `Ctrl+PgUp` / `Ctrl+PgDn`;
 - hidden sheets are marked in the list;
+- sheet tab colors of `.xlsx` workbooks are shown as a strip under the tab;
 - the selected sheet, cell and zoom level are remembered across IDE restarts.
 
 **User interface**
@@ -64,13 +66,17 @@ License — [MIT](LICENSE), third-party libraries — [THIRD-PARTY.md](THIRD-PAR
   a dark theme is automatically replaced with a contrasting color;
 - status bar with the cell address, type and value;
 - "Reload" and "Open in System" buttons;
-- clear messages for password-protected files and for non-`.xls` files.
+- clear messages for password-protected files and unsupported formats.
+
+`.xlsx` files additionally use theme colors and tints from the workbook theme,
+inline and shared strings, and the 1904 date system.
 
 ## Workbook diff (v2)
 
-The plugin picks up a comparison of two `.xls` files automatically: "Show Diff"
-in the Git log, "Compare with Local", Diff from Commit, and the regular two-file
-comparison in the IDE.
+The plugin picks up a comparison of two `.xls`/`.xlsx` files automatically:
+"Show Diff" in the Git log, "Compare with Local", Diff from Commit, and the
+regular two-file comparison in the IDE. Mixed comparisons (an `.xls` revision
+against an `.xlsx` one) are supported too.
 
 - Two "before / after" panes with synchronized scrolling.
 - Sheets are matched by name; the tabs at the bottom show the union of the
@@ -111,7 +117,7 @@ positionally, so an edit looks like a change rather than a delete + insert.
 
 ### Git LFS and "eternal loading"
 
-If a `.xls` file is stored in Git LFS, IntelliJ fetches the revision contents
+If an `.xls`/`.xlsx` file is stored in Git LFS, IntelliJ fetches the revision contents
 with `git cat-file --filters`. When the LFS object is not in the local cache,
 that command goes to download it from the server, and **the diff tab hangs on
 loading before the plugin even receives the contents** — the plugin cannot
@@ -140,14 +146,21 @@ git lfs pull
 
 ## Limitations
 
-- only `.xls` (BIFF8); `.xlsx`/`.xlsm` — in future versions;
+- formats: `.xls` (BIFF8) and `.xlsx`; `.xlsm`, `.xltx`, `.xlsb` and `.ods` are
+  not claimed by the editor or the diff tool;
 - read-only, no editing;
 - not supported: charts, images, comments, conditional formatting, autofilter,
   row/column grouping, hyperlinks, formatting of individual characters inside a
   cell (rich text), password-protected workbooks;
-- sheet tab color is not shown (Apache POI does not expose it for HSSF);
+- sheet tab colors are only available for `.xlsx` (Apache POI does not expose
+  them for HSSF sheets);
+- formula values come from the workbook cache; formulas are never recalculated,
+  so a file saved without cached results shows empty formula cells;
 - the diff takes the used range of a sheet into account; "empty" trailing rows
-  and columns do not participate in the diff.
+  and columns do not participate in the diff;
+- a workbook with more than five million materialized cells is truncated (a
+  warning is added to the parsed document) so that an artificially styled
+  `.xlsx` cannot exhaust the IDE heap.
 
 ## Build and installation
 
@@ -180,14 +193,16 @@ Local installation without a dialog (the IDE must be closed):
 .\install-plugin.ps1 -IdeConfigName IntelliJIdea2026.2  # 2026.2
 ```
 
-After installation, `.xls` opens in the XLS Viewer editor, and a comparison of
-two `.xls` files opens in the plugin's diff viewer.
+After installation, `.xls` and `.xlsx` files open in the XLS Viewer editor, and
+a comparison of two workbooks (or of an `.xls` with an `.xlsx`) opens in the
+plugin's diff viewer.
 
 ## Development
 
 ```bash
 # run the IDE sandbox with a demo file
 gradlew runIde -Psample=build/samples/formatting.xls
+gradlew runIde -Psample=build/samples/formatting.xlsx
 
 # regenerate the demo workbooks (build/samples)
 gradlew generateSamples
@@ -197,36 +212,41 @@ gradlew test
 ```
 
 The offscreen renderer puts PNGs into `build/reports/render/`:
-`formatting.png`, `formatting-scrolled.png`, `large.png`, `diff.png`,
-`diff-selection.png`, `diff-collapsed.png`, `diff-collapsed-gaps.png`,
-`diff-150.png` — handy for checking the rendering without launching the IDE.
+`formatting.png`, `formatting-xlsx.png`, `formatting-scrolled.png`, `large.png`,
+`diff.png`, `diff-xlsx.png`, `diff-selection.png`, `diff-collapsed.png`,
+`diff-collapsed-gaps.png`, `diff-150.png` — handy for checking the rendering
+without launching the IDE.
 
 ## Architecture
 
 ```
-parse/   XlsParser        BIFF8 -> immutable model; the workbook is closed immediately
-         StyleTableBuilder deduplication of XF/fonts, colors from the workbook palette
-         CellTextFormatter DataFormatter + cached formula results
+parse/   WorkbookParser     BIFF8 (HSSF) and OOXML (XSSF) -> immutable model;
+                            the workbook is closed immediately
+         StyleTableBuilder  deduplication of XF/fonts, alignment, borders
+         StyleColors        indexed BIFF palette vs. OOXML RGB/theme/tint colors
+         CellTextFormatter  DataFormatter + cached formula results, 1900/1904 dates
+         WorkbookFormats    extensions claimed by the editor and the diff tool
 model/   XlsDocument, SheetModel, CellModel, CellStyleModel, CellRange,
          SheetDiffMarks (diff marks), SheetTab
-ui/      GridGeometry     prefix sums of heights/widths, binary search for a cell
-         XlsGridComponent owner-drawn virtualized grid (merge, freeze, borders,
-                          diff tint and outlines, filler hatching)
-         XlsHeaders       row/column headers, marker dots, corner
-         XlsSheetTabs     sheet tabs with dots
-         XlsTheme         colors matching the IDE theme, "Excel colors", diff colors
+ui/      GridGeometry       prefix sums of heights/widths, binary search for a cell
+         XlsGridComponent   owner-drawn virtualized grid (merge, freeze, borders,
+                            diff tint and outlines, filler hatching)
+         XlsHeaders         row/column headers, marker dots, corner
+         XlsSheetTabs       sheet tabs with dots and tab colors
+         XlsTheme           colors matching the IDE theme, "Excel colors", diff colors
 editor/  XlsFileEditorProvider / XlsFileEditor / XlsEditorPanel
 diff/    XlsDiffTool / XlsDiffToolRegistrar   integration with the platform DiffTool API
          XlsDiffViewer / XlsDiffPanel       two panes, synchronized scrolling, tabs
          SheetDiffer                        sheet/row/column alignment, marks
          DiffSides                          synthetic SheetModels for the panes
-         XlsDiffContents                    reading the diff sides and OLE2 validation
+         XlsDiffContents                    reading the diff sides and validating content
 ```
 
 Why a custom grid instead of `JTable`: merged cells, freeze panes and exact
-per-side borders cannot be expressed in `JTable` without workarounds. BIFF8 is
-limited to 65536×256, so the geometry is stored in arrays and painting only
-covers the visible area.
+per-side borders cannot be expressed in `JTable` without workarounds. `.xls` is
+limited to 65536×256 and `.xlsx` to 1048576×16384, so the geometry is stored in
+arrays, rows keep only their own columns, and painting only covers the visible
+area.
 
 Diff integration: the plugin registers `com.intellij.diff.DiffTool`
 programmatically (`XlsDiffToolRegistrar`) with `LoadingOrder.FIRST` — the
@@ -237,7 +257,8 @@ internal platform classes.
 
 ## Dependencies
 
-- Apache POI 5.5.1 (`poi` plus transitive `commons-*`, `SparseBitSet`,
+- Apache POI 5.5.1 (`poi` and `poi-ooxml` plus transitive `xmlbeans`,
+  `poi-ooxml-lite`, `commons-compress`, `commons-*`, `SparseBitSet`,
   `log4j-api`), pulled from Maven and packaged into the plugin's `lib/` during
   the build; licenses and copyright — in [THIRD-PARTY.md](THIRD-PARTY.md);
 - IntelliJ Platform `com.intellij.modules.platform` — works in both Community

@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "org.cprime"
-version = "0.5.1"
+version = "0.6.0"
 
 /**
  * IDE used to compile against. The release artifact is built against the oldest supported
@@ -64,6 +64,8 @@ dependencies {
     }
 
     implementation("org.apache.poi:poi:5.5.1")
+    // OOXML (.xlsx): XSSF workbooks, styles, shared strings and the OPC package.
+    implementation("org.apache.poi:poi-ooxml:5.5.1")
 
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
@@ -93,10 +95,10 @@ intellijPlatform {
         // The first sentence is what the Marketplace search card shows (about 40 characters),
         // so it must stay short and start with the value proposition.
         description = """
-            <p>Read-only XLS viewer with workbook diff.</p>
-            <p>Open legacy Excel 97-2003 workbooks (<code>.xls</code>) right in the IDE and see them the way
-            Excel draws them: fonts, fills, borders, alignment, text wrapping, merged cells, frozen panes,
-            row heights, column widths and number formats.</p>
+            <p>Read-only XLS/XLSX viewer with workbook diff.</p>
+            <p>Open Excel workbooks (<code>.xls</code>, Excel 97-2003, and <code>.xlsx</code>) right in the IDE and see
+            them the way Excel draws them: fonts, fills, borders, alignment, text wrapping, merged cells, frozen panes,
+            row heights, column widths, number formats, theme colors and colored sheet tabs.</p>
             <ul>
               <li>Sheet switching with Excel-like tabs, <code>Ctrl+PgUp</code> / <code>Ctrl+PgDn</code> and hidden sheets</li>
               <li>Range selection and <code>Ctrl+C</code> as TSV, ready to paste into Excel</li>
@@ -110,6 +112,7 @@ intellijPlatform {
               rows and columns are shown as hatched placeholders</li>
               <li>"Only changes" mode collapses unchanged rows and columns and marks skipped ranges with dashed gaps</li>
               <li><code>Alt+Arrow</code> and <code>F7</code> / <code>Shift+F7</code> navigation between changes</li>
+              <li>an <code>.xls</code> revision can be compared with an <code>.xlsx</code> one</li>
             </ul>
             <p>Requires IntelliJ IDEA 2025.2 or newer. The plugin only reads workbooks and never modifies them.
             Source code and issue tracker: <a href="https://github.com/IljaGnezdilov/intellij-xls-viewer">GitHub</a>.
@@ -118,14 +121,12 @@ intellijPlatform {
 
         changeNotes = """
             <ul>
-              <li>Empty differences are hidden by default: cells that are empty on both sides
-              (formatting-only cells, empty formula results, whitespace-only text) are no longer
-              marked, counted or kept visible in the <b>Only changes</b> mode. The status bar
-              shows how many empty differences were hidden.</li>
-              <li>New <b>Show empty changes</b> checkbox brings them back and is remembered
-              between sessions.</li>
-              <li>Added and deleted rows and columns are still shown even when they contain
-              no values.</li>
+              <li>Support for modern <b>.xlsx</b> workbooks in the viewer and in the diff viewer, including
+              theme colors, tinted fills and colored sheet tabs.</li>
+              <li>An <code>.xls</code> revision can be compared with an <code>.xlsx</code> one: both are rendered
+              in the same grid with the same change markers, "Only changes" mode and navigation.</li>
+              <li>Large <code>.xlsx</code> sheets are protected by a cell budget so that a badly formatted file
+              cannot exhaust the IDE heap.</li>
             </ul>
         """.trimIndent()
 
@@ -175,7 +176,7 @@ tasks {
 
     register<JavaExec>("generateSamples") {
         group = "verification"
-        description = "Generates demo .xls workbooks in build/samples"
+        description = "Generates demo .xls and .xlsx workbooks in build/samples"
         dependsOn("testClasses")
         classpath = sourceSets["test"].runtimeClasspath
         mainClass.set("org.cprime.xlsviewer.tools.SampleWorkbookKt")

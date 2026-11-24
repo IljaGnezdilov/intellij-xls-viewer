@@ -7,9 +7,10 @@ build, change and ship the plugin without breaking it.
 ## Project
 
 IntelliJ IDEA plugin **XLS Viewer** (`org.cprime.xlsviewer`, group `org.cprime`): a read-only
-viewer for legacy Excel 97–2003 workbooks (`.xls`, BIFF8) plus a two-workbook diff that is
-picked up by the platform diff view for Git and file comparisons. One artifact serves
-IntelliJ IDEA 2025.2+ (`since-build=252`), i.e. 2025.2 through 2026.3 and newer.
+viewer for Excel workbooks - legacy `.xls` (BIFF8) and modern `.xlsx` (OOXML) - plus a
+two-workbook diff that is picked up by the platform diff view for Git and file comparisons.
+One artifact serves IntelliJ IDEA 2025.2+ (`since-build=252`), i.e. 2025.2 through 2026.3
+and newer.
 
 ## Non-negotiable constraints
 
@@ -44,7 +45,7 @@ IntelliJ IDEA 2025.2+ (`since-build=252`), i.e. 2025.2 through 2026.3 and newer.
 - Windows, PowerShell; invoke `.\gradlew.bat`.
 - JDK 25 (`jvmToolchain(25)`) compiling to Java 21 bytecode; Gradle wrapper 9.4.1;
   IntelliJ Platform Gradle Plugin 2.20.1; Kotlin 2.4.21 (language/API 2.1); Apache POI 5.5.1
-  (HSSF).
+  (`poi` for HSSF plus `poi-ooxml`/`xmlbeans` for XSSF).
 - By default the build targets the **downloaded 2025.2** (build 252) distribution, so the
   artifact is binary compatible with every supported IDE. `-PtargetIde=local` switches to the
   locally installed IDE behind `-PidePath` (default
@@ -74,17 +75,20 @@ Artifact: `build/distributions/xls-viewer-<version>.zip`.
 ## Source map
 
 ```
-parse/   XlsParser             BIFF8 -> immutable model, workbook closed immediately
-         StyleTableBuilder     XF/font deduplication, colors from the workbook palette
-         CellTextFormatter     DataFormatter + cached formula results
-         ColorPalette          palette handling
-         LfsPointer            Git LFS pointer detection for diff sides
+parse/   WorkbookParser      content sniffing: BIFF8 (HSSF) or OOXML (XSSF) -> immutable model,
+                             workbook closed immediately; 5M cell budget per workbook
+         StyleTableBuilder    XF/font deduplication, alignment, borders
+         StyleColors          HSSF indexed palette vs. XSSF RGB/theme/tint colors, tab colors
+         ColorPalette         BIFF indexed palette handling
+         CellTextFormatter    DataFormatter, cached formula results, 1900/1904 dates
+         WorkbookFormats      extensions claimed by the editor and the diff tool
+         LfsPointer           Git LFS pointer detection for diff sides
 model/   XlsDocument, SheetModel, CellModel, CellStyleModel, CellRange,
-         SheetDiffMarks, SheetTab
+         SheetDiffMarks, SheetTab (tab color included)
 ui/      GridGeometry          prefix sums + binary search for hit testing
          XlsGridComponent      owner-drawn virtualized grid (merges, freeze, borders,
                                diff tint/outlines, filler hatching, selection)
-         XlsHeaders            row/column headers, marker dots
+         XlsHeaders            row/column headers, marker dots, tab colors
          XlsSheetTabs          sheet tabs with dots
          XlsNavPad             hand-drawn 2x2 navigation pad
          XlsTheme              IDE-theme colors, "Excel colors", diff colors
@@ -92,14 +96,15 @@ editor/  XlsFileEditorProvider, XlsFileEditor, XlsEditorPanel, XlsEditorState
 diff/    XlsDiffTool, XlsDiffToolRegistrar, XlsDiffViewer, XlsDiffPanel
          SheetDiffer           sheet/row/column alignment, patience diff
          DiffSides             synthetic SheetModel for each pane
-         XlsDiffContents       reading diff sides, OLE2/LFS validation
+         XlsDiffContents       reading diff sides, OLE2/ZIP/LFS validation
          DiffNavigation        next/previous change navigation
 XlsViewerSettings, XlsViewerBundle (messages + _ru bundle)
 ```
 
 The grid is owner-drawn on purpose: merged cells, frozen panes and per-side borders cannot be
-expressed with `JTable` without hacks. BIFF8 is limited to 65536×256, so geometry is stored in
-arrays and painting only touches the visible area.
+expressed with `JTable` without hacks. BIFF8 is limited to 65536×256 and OOXML to
+1048576×16384, so geometry is stored in arrays, each `RowModel` keeps only its own columns,
+and painting only touches the visible area.
 
 ## How the diff integration works
 
@@ -116,7 +121,7 @@ Diff flow: `XlsDiffContents` reads both sides (handling LFS pointers and OLE2 ch
 
 ## Version and metadata
 
-`version = "0.5.1"` in `build.gradle.kts` is the **only** place with the version. Everything
+`version = "0.6.0"` in `build.gradle.kts` is the **only** place with the version. Everything
 else derives from it:
 
 - `patchPluginXml` injects `<version>`, `<description>`, `<change-notes>`, vendor and
@@ -132,11 +137,13 @@ it), and leave `plugin.xml` alone. `pluginConfiguration.id/name` are still requi
 
 ## Tests and visual artifacts
 
-- 38 tests. Plain logic tests use JUnit 5; platform tests extend `BasePlatformTestCase`
-  (JUnit 4 + `testFramework(TestFrameworkType.Platform)`).
+- 54 tests. Plain logic tests use JUnit 5; platform tests extend `BasePlatformTestCase`
+  (JUnit 4 + `testFramework(TestFrameworkType.Platform)`). `WorkbookParserTest` and
+  `XlsxParserTest` build their fixtures on the fly with HSSF/XSSF; diff tests cover both
+  containers and mixed `.xls` vs `.xlsx` comparisons.
 - After any rendering or diff-mark change, run `test` and inspect
-  `build/reports/render/*.png` (`formatting`, `large`, `diff`, `diff-selection`,
-  `diff-collapsed`, `diff-collapsed-gaps`, `diff-150`, `diff-empty-hidden`,
+  `build/reports/render/*.png` (`formatting`, `formatting-xlsx`, `large`, `diff`, `diff-xlsx`,
+  `diff-selection`, `diff-collapsed`, `diff-collapsed-gaps`, `diff-150`, `diff-empty-hidden`,
   `diff-empty-shown`). These are generated offscreen and are
   the fastest way to check visuals without launching the IDE.
 - Public screenshots for the README are `docs/viewer.png` and `docs/diff.png` and are tracked.
@@ -170,6 +177,16 @@ Only when explicitly asked to release:
 - Compiling against 2025.2 is what guarantees binary compatibility; `-PtargetIde=local` builds
   are for the dev loop only and must never be published.
 - The configuration cache is disabled for the platform plugin; do not enable it blindly.
+- OOXML theme references are resolved by POI for fills and fonts
+  (`XSSFCellStyle.getFillForegroundColorColor()`, `XSSFFont.getXSSFColor()`); border and tab
+  colors need `ThemesTable.inheritFromThemeAsRequired` explicitly. Tint is applied by
+  `StyleColors`, because `ExtendedColor.getRGBWithTint()` ignores indexed colors.
+  `poi-ooxml` is a large dependency (~10–12 MB in the archive) and optional POI artifacts
+  (xmlsec, bouncycastle, pdfbox) must stay out of the runtime classpath.
+- `.xlsx` sheets can be up to 1048576×16384: never allocate per-row arrays of the full sheet
+  width (`RowModel` trims to the last filled column) and keep the 5M-cell budget in
+  `WorkbookParser` intact. Encrypted `.xlsx` is an OLE2 container with `EncryptedPackage`,
+  not a ZIP; detect it before reporting "not an Excel file".
 - `Log4j API could not find a logging provider` on the first parse is harmless.
 - `install-plugin.ps1` needs the target IDE closed: it fails fast when plugin jars are locked.
 - Git normalizes line endings via `.gitattributes`; the working tree may show CRLF. Do not

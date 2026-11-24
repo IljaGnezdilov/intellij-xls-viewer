@@ -1,6 +1,6 @@
 package org.cprime.xlsviewer.diff
 
-import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.parse.WorkbookParser
 import org.cprime.xlsviewer.tools.createDiffPair
 import org.cprime.xlsviewer.tools.createPartiallyChangedPair
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -13,8 +13,8 @@ class DiffNavigationTest {
     private fun dataSheet(): SheetDiff {
         val (oldBytes, newBytes) = createDiffPair()
         val diff = WorkbookDiffer.compare(
-            XlsParser.open(oldBytes, Locale.US),
-            XlsParser.open(newBytes, Locale.US),
+            WorkbookParser.open(oldBytes, Locale.US),
+            WorkbookParser.open(newBytes, Locale.US),
         )
         return diff.sheets.first()
     }
@@ -67,13 +67,13 @@ class DiffNavigationTest {
     fun `only-changes mode filters out unchanged sheets`() {
         val (oldBytes, newBytes) = createPartiallyChangedPair()
         val diff = WorkbookDiffer.compare(
-            XlsParser.open(oldBytes, Locale.US),
-            XlsParser.open(newBytes, Locale.US),
+            WorkbookParser.open(oldBytes, Locale.US),
+            WorkbookParser.open(newBytes, Locale.US),
         )
         assertEquals(listOf(0, 1), DiffNavigation.visibleSheets(diff, onlyDiffs = false))
         assertEquals(listOf(0), DiffNavigation.visibleSheets(diff, onlyDiffs = true))
 
-        val same = XlsParser.open(oldBytes, Locale.US)
+        val same = WorkbookParser.open(oldBytes, Locale.US)
         val unchanged = WorkbookDiffer.compare(same, same)
         assertEquals(listOf(0, 1), DiffNavigation.visibleSheets(unchanged, onlyDiffs = true))
     }

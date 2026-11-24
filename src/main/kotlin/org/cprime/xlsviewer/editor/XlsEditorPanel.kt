@@ -20,11 +20,11 @@ import org.cprime.xlsviewer.XlsViewerBundle
 import org.cprime.xlsviewer.XlsViewerSettings
 import org.cprime.xlsviewer.model.SheetTab
 import org.cprime.xlsviewer.model.XlsDocument
-import org.cprime.xlsviewer.parse.NotAnXlsFileException
-import org.cprime.xlsviewer.parse.XlsEncryptedException
+import org.cprime.xlsviewer.parse.NotAnExcelFileException
+import org.cprime.xlsviewer.parse.WorkbookEncryptedException
 import org.cprime.xlsviewer.parse.XlsLfsPointerException
-import org.cprime.xlsviewer.parse.XlsParseException
-import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.parse.WorkbookParseException
+import org.cprime.xlsviewer.parse.WorkbookParser
 import org.cprime.xlsviewer.parse.LfsPointer
 import org.cprime.xlsviewer.ui.XlsColumnHeader
 import org.cprime.xlsviewer.ui.XlsCorner
@@ -299,7 +299,7 @@ class XlsEditorPanel(
                     val bytes = ApplicationManager.getApplication()
                         .runReadAction(Computable { file.contentsToByteArray() })
                     val readAt = System.nanoTime()
-                    result = XlsParser.open(bytes, Locale.getDefault()) { name ->
+                    result = WorkbookParser.open(bytes, Locale.getDefault()) { name ->
                         indicator.text = XlsViewerBundle.message("task.sheet", name)
                     }
                     val parsedAt = System.nanoTime()
@@ -334,11 +334,11 @@ class XlsEditorPanel(
             sheetCombo.addItem(SheetItem(sheet.index, sheet.name, sheet.hidden))
         }
         updatingUi = false
-        tabs.sheets = loaded.sheets.map { SheetTab(it.index, it.name, it.hidden) }
+        tabs.sheets = loaded.sheets.map { SheetTab(it.index, it.name, it.hidden, tabColor = it.tabColor) }
         tabs.theme = currentTheme()
 
         if (loaded.sheets.isEmpty()) {
-            showError(XlsParseException(XlsViewerBundle.message("error.empty")))
+            showError(WorkbookParseException(XlsViewerBundle.message("error.empty")))
             return
         }
 
@@ -380,11 +380,11 @@ class XlsEditorPanel(
                 throwable.size?.toString() ?: "?",
             )
 
-        is XlsEncryptedException -> XlsViewerBundle.message("error.encrypted.title") to
+        is WorkbookEncryptedException -> XlsViewerBundle.message("error.encrypted.title") to
             XlsViewerBundle.message("error.encrypted.text")
 
-        is NotAnXlsFileException -> XlsViewerBundle.message("error.notXls.title") to
-            XlsViewerBundle.message("error.notXls.text")
+        is NotAnExcelFileException -> XlsViewerBundle.message("error.notExcel.title") to
+            XlsViewerBundle.message("error.notExcel.text")
 
         else -> XlsViewerBundle.message("error.generic.title") to
             (throwable.message ?: throwable.javaClass.simpleName)

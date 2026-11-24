@@ -8,7 +8,7 @@ import com.intellij.openapi.project.DumbAware
 import org.cprime.xlsviewer.XlsViewerBundle
 
 /**
- * Diff tool for legacy Excel workbooks.
+ * Diff tool for Excel workbooks (`.xls` and `.xlsx`).
  *
  * It is registered at runtime in front of the built-in tools by [XlsDiffToolRegistrar]: the
  * platform opens the first tool that accepts the request, and the built-in binary viewer would

@@ -21,11 +21,11 @@ import org.cprime.xlsviewer.model.DiffMark
 import org.cprime.xlsviewer.model.SheetTab
 import org.cprime.xlsviewer.model.XlsDocument
 import org.cprime.xlsviewer.parse.LfsPointer
-import org.cprime.xlsviewer.parse.NotAnXlsFileException
-import org.cprime.xlsviewer.parse.XlsEncryptedException
+import org.cprime.xlsviewer.parse.NotAnExcelFileException
+import org.cprime.xlsviewer.parse.WorkbookEncryptedException
 import org.cprime.xlsviewer.parse.XlsLfsPointerException
-import org.cprime.xlsviewer.parse.XlsParseException
-import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.parse.WorkbookParseException
+import org.cprime.xlsviewer.parse.WorkbookParser
 import org.cprime.xlsviewer.ui.XlsColumnHeader
 import org.cprime.xlsviewer.ui.XlsCorner
 import org.cprime.xlsviewer.ui.XlsGridComponent
@@ -450,14 +450,14 @@ class XlsDiffPanel(
                     failureSide = SIDE_LEFT
                     val leftBytes = XlsDiffContents.readBytes(leftContent)
                     val leftReadAt = System.nanoTime()
-                    left = XlsParser.open(leftBytes)
+                    left = WorkbookParser.open(leftBytes)
                     val leftParsedAt = System.nanoTime()
 
                     indicator.text = XlsViewerBundle.message("diff.reading.right")
                     failureSide = SIDE_RIGHT
                     val rightBytes = XlsDiffContents.readBytes(rightContent)
                     val rightReadAt = System.nanoTime()
-                    right = XlsParser.open(rightBytes)
+                    right = WorkbookParser.open(rightBytes)
                     val rightParsedAt = System.nanoTime()
                     failureSide = SIDE_NONE
 
@@ -521,8 +521,8 @@ class XlsDiffPanel(
         openWorkingCopyButton.isVisible = workingCopyFile != null
         val title = when (throwable) {
             is XlsLfsPointerException -> XlsViewerBundle.message("error.lfs.title")
-            is XlsEncryptedException -> XlsViewerBundle.message("error.encrypted.title")
-            is NotAnXlsFileException -> XlsViewerBundle.message("error.notXls.title")
+            is WorkbookEncryptedException -> XlsViewerBundle.message("error.encrypted.title")
+            is NotAnExcelFileException -> XlsViewerBundle.message("error.notExcel.title")
             else -> XlsViewerBundle.message("diff.error.title")
         }
         val text = when (throwable) {
@@ -532,9 +532,9 @@ class XlsDiffPanel(
                 throwable.size?.toString() ?: "?",
             )
 
-            is XlsEncryptedException -> XlsViewerBundle.message("error.encrypted.text")
-            is NotAnXlsFileException -> XlsViewerBundle.message("error.notXls.text")
-            is XlsParseException -> throwable.message ?: XlsViewerBundle.message("error.generic.text")
+            is WorkbookEncryptedException -> XlsViewerBundle.message("error.encrypted.text")
+            is NotAnExcelFileException -> XlsViewerBundle.message("error.notExcel.text")
+            is WorkbookParseException -> throwable.message ?: XlsViewerBundle.message("error.generic.text")
             else -> throwable.message ?: throwable.javaClass.simpleName
         }
         LOG.warn("XLS diff error: ${throwable.message}", throwable)

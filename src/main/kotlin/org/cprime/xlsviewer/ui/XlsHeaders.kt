@@ -318,6 +318,11 @@ class XlsSheetTabs : JComponent() {
                     g2.color = theme.accent
                     g2.fillRect(bounds.x, bounds.y, bounds.width, 2)
                 }
+                entry.tabColor?.let { argb ->
+                    // Excel draws a colored strip along the bottom edge of a tab.
+                    g2.color = Color(argb, true)
+                    g2.fillRect(bounds.x, bounds.y + bounds.height - 3, bounds.width, 3)
+                }
                 g2.color = if (selected) theme.accent else theme.tabForeground
                 val label = entry.name
                 val textWidth = metrics.stringWidth(label)
@@ -348,7 +353,7 @@ class XlsSheetTabs : JComponent() {
         for (sheet in sheets) {
             if (sheet.hidden) continue
             val tabWidth = metrics.stringWidth(sheet.name) + 24 + if (sheet.mark != null) markerWidth else 0
-            result.add(TabEntry(sheet.index, sheet.name, sheet.mark, Rectangle(x, 1, tabWidth, height - 2)))
+            result.add(TabEntry(sheet.index, sheet.name, sheet.mark, sheet.tabColor, Rectangle(x, 1, tabWidth, height - 2)))
             x += tabWidth + 2
         }
         return result
@@ -383,6 +388,7 @@ class XlsSheetTabs : JComponent() {
         val sheetIndex: Int,
         val name: String,
         val mark: org.cprime.xlsviewer.model.DiffMark?,
+        val tabColor: Int?,
         val bounds: Rectangle,
     )
 

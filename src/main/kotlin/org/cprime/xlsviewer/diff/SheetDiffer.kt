@@ -192,8 +192,8 @@ object SheetDiffer {
                 val leftCol = colPair.left
                 val rightCol = colPair.right
                 if (leftCol == null || rightCol == null) continue
-                val a = leftRowModel?.cells?.getOrNull(leftCol)
-                val b = rightRowModel?.cells?.getOrNull(rightCol)
+                val a = leftRowModel?.cellAt(leftCol)
+                val b = rightRowModel?.cellAt(rightCol)
                 if (a == null && b == null) continue
                 if (ignoreEmptyChanges && isEmptyCell(a) && isEmptyCell(b)) {
                     // A formatting-only cell against a missing one (or an empty formula result,
@@ -276,7 +276,7 @@ object SheetDiffer {
 
     private fun headerKey(sheet: SheetModel, headerRow: Int, col: Int, ignoreEmptyChanges: Boolean): Long {
         if (headerRow < 0) return SEED
-        val cell = sheet.rows.getOrNull(headerRow)?.cells?.getOrNull(col) ?: return SEED
+        val cell = sheet.rows.getOrNull(headerRow)?.cellAt(col) ?: return SEED
         if (ignoreEmptyChanges && cell.isEmpty) return SEED
         var hash = mix(SEED, cell.kind.ordinal)
         hash = mix(hash, cell.text.hashCode())
@@ -287,7 +287,7 @@ object SheetDiffer {
         val rowModel = sheet.rows.getOrNull(row)
         var hash = SEED
         for (col in cols) {
-            val raw = rowModel?.cells?.getOrNull(col)
+            val raw = rowModel?.cellAt(col)
             // Empty cells hash like missing ones, so rows that differ only in formatting-only
             // cells are not treated as different rows during alignment.
             val cell = if (ignoreEmptyChanges && raw != null && raw.isEmpty) null else raw

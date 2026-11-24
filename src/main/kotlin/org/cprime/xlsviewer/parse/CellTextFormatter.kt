@@ -1,7 +1,6 @@
 package org.cprime.xlsviewer.parse
 
-import org.apache.poi.hssf.usermodel.HSSFCell
-import org.apache.poi.hssf.usermodel.HSSFWorkbook
+import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.CellType
 import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.ss.usermodel.DateUtil
@@ -13,10 +12,14 @@ import java.util.Locale
  * Turns raw cell values into the text Excel would show, honouring number formats,
  * dates, currencies and cached formula results.
  */
-internal class CellTextFormatter(private val locale: Locale) {
+internal class CellTextFormatter(
+    private val locale: Locale,
+    /** OOXML workbooks may use the 1904 date system; BIFF8 almost always uses 1900. */
+    private val date1904: Boolean = false,
+) {
     private val formatter = DataFormatter(locale)
 
-    fun kind(cell: HSSFCell): CellKind {
+    fun kind(cell: Cell): CellKind {
         val type = effectiveType(cell)
         return when (type) {
             CellType.BLANK, CellType._NONE -> CellKind.BLANK
@@ -28,7 +31,7 @@ internal class CellTextFormatter(private val locale: Locale) {
         }
     }
 
-    fun text(cell: HSSFCell): String = when (kind(cell)) {
+    fun text(cell: Cell): String = when (kind(cell)) {
         CellKind.BLANK -> ""
         CellKind.TEXT -> stringValue(cell)
         CellKind.BOOLEAN -> if (runCatching { cell.booleanCellValue }.getOrDefault(false)) "TRUE" else "FALSE"
@@ -36,24 +39,24 @@ internal class CellTextFormatter(private val locale: Locale) {
         CellKind.NUMBER, CellKind.DATE -> numberText(cell)
     }
 
-    private fun effectiveType(cell: HSSFCell): CellType =
+    private fun effectiveType(cell: Cell): CellType =
         if (cell.cellType == CellType.FORMULA) cell.cachedFormulaResultType else cell.cellType
 
-    private fun isDate(cell: HSSFCell): Boolean =
+    private fun isDate(cell: Cell): Boolean =
         runCatching { DateUtil.isCellDateFormatted(cell) }.getOrDefault(false)
 
-    private fun stringValue(cell: HSSFCell): String {
+    private fun stringValue(cell: Cell): String {
         runCatching { cell.richStringCellValue?.string }.getOrNull()?.let { return it }
         return runCatching { cell.stringCellValue }.getOrDefault("")
     }
 
-    private fun numberText(cell: HSSFCell): String {
+    private fun numberText(cell: Cell): String {
         val value = runCatching { cell.numericCellValue }.getOrElse { return "" }
         val style = cell.cellStyle
         val formatIndex = runCatching { style.dataFormat.toInt() }.getOrDefault(0)
         val formatString = runCatching { style.dataFormatString }.getOrNull() ?: "General"
         return runCatching {
-            formatter.formatRawCellContents(value, formatIndex, formatString)
+            formatter.formatRawCellContents(value, formatIndex, formatString, date1904)
         }.getOrElse { defaultNumber(value) }
     }
 
@@ -64,7 +67,7 @@ internal class CellTextFormatter(private val locale: Locale) {
         return java.text.NumberFormat.getInstance(locale).format(value)
     }
 
-    private fun errorText(cell: HSSFCell): String {
+    private fun errorText(cell: Cell): String {
         val code = runCatching { cell.errorCellValue.toInt() }.getOrDefault(0)
         return runCatching { FormulaError.forInt(code.toByte()).string }.getOrDefault("#ERROR")
     }

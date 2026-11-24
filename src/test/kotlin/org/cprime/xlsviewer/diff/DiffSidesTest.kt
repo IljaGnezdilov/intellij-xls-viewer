@@ -1,6 +1,6 @@
 package org.cprime.xlsviewer.diff
 
-import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.parse.WorkbookParser
 import org.cprime.xlsviewer.tools.createCellChangePair
 import org.cprime.xlsviewer.tools.createColumnAddedPair
 import org.cprime.xlsviewer.tools.createRowAddedPair
@@ -12,8 +12,8 @@ import java.util.Locale
 class DiffSidesTest {
 
     private fun diffOf(pair: Pair<ByteArray, ByteArray>): WorkbookDiff = WorkbookDiffer.compare(
-        XlsParser.open(pair.first, Locale.US),
-        XlsParser.open(pair.second, Locale.US),
+        WorkbookParser.open(pair.first, Locale.US),
+        WorkbookParser.open(pair.second, Locale.US),
     )
 
     @Test
@@ -68,7 +68,7 @@ class DiffSidesTest {
     @Test
     fun `sheet without changes is never collapsed`() {
         val (oldBytes, _) = createRowAddedPair()
-        val document = XlsParser.open(oldBytes, Locale.US)
+        val document = WorkbookParser.open(oldBytes, Locale.US)
         val diff = WorkbookDiffer.compare(document, document)
         val model = DiffSides.build(diff.sheets.single(), leftSide = true, collapsed = true, context = 0)
 

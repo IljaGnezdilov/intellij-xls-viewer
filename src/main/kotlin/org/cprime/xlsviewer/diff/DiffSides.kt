@@ -208,7 +208,7 @@ object DiffSides {
             val rowModel = source.rows.getOrNull(sourceRow) ?: continue
             for (alignedCol in diff.cols.indices) {
                 val sourceCol = (if (added) diff.cols[alignedCol].right else diff.cols[alignedCol].left) ?: continue
-                if (rowModel.cells.getOrNull(sourceCol) != null) visibleCols[alignedCol] = true
+                if (rowModel.cellAt(sourceCol) != null) visibleCols[alignedCol] = true
             }
         }
     }
@@ -224,7 +224,7 @@ object DiffSides {
             for (alignedRow in diff.rows.indices) {
                 val sourceRow = (if (added) diff.rows[alignedRow].right else diff.rows[alignedRow].left) ?: continue
                 val rowModel = source.rows.getOrNull(sourceRow) ?: continue
-                if (rowModel.cells.getOrNull(sourceCol) != null) visibleRows[alignedRow] = true
+                if (rowModel.cellAt(sourceCol) != null) visibleRows[alignedRow] = true
             }
         }
     }

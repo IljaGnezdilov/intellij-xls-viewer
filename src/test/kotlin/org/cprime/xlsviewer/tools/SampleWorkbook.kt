@@ -1,12 +1,14 @@
 ﻿package org.cprime.xlsviewer.tools
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
-import org.apache.poi.hssf.util.HSSFColor
 import org.apache.poi.ss.usermodel.BorderStyle
 import org.apache.poi.ss.usermodel.FillPatternType
 import org.apache.poi.ss.usermodel.HorizontalAlignment
+import org.apache.poi.ss.usermodel.IndexedColors
 import org.apache.poi.ss.usermodel.VerticalAlignment
+import org.apache.poi.ss.usermodel.Workbook
 import org.apache.poi.ss.util.CellRangeAddress
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalTime
@@ -23,25 +25,34 @@ fun main(args: Array<String>) {
 
     File(outputDir, "formatting.xls").writeBytes(createFormattingSample())
     File(outputDir, "large.xls").writeBytes(createLargeSample())
+    File(outputDir, "formatting.xlsx").writeBytes(createFormattingSampleXlsx())
+    File(outputDir, "large.xlsx").writeBytes(createLargeSampleXlsx())
     println("Samples written to ${outputDir.absolutePath}")
 }
 
-fun createFormattingSample(): ByteArray {
-    val workbook = HSSFWorkbook()
+fun createFormattingSample(): ByteArray = createFormattingSample(HSSFWorkbook())
+
+fun createFormattingSampleXlsx(): ByteArray = createFormattingSample(XSSFWorkbook())
+
+fun createLargeSample(): ByteArray = createLargeSample(HSSFWorkbook())
+
+fun createLargeSampleXlsx(): ByteArray = createLargeSample(XSSFWorkbook())
+
+private fun createFormattingSample(workbook: Workbook): ByteArray {
     try {
         val sheet = workbook.createSheet("Форматирование")
 
         val titleFont = workbook.createFont().apply {
             bold = true
             fontHeightInPoints = 18
-            color = HSSFColor.HSSFColorPredefined.WHITE.index
+            color = IndexedColors.WHITE.index
             fontName = "Calibri"
         }
         val titleStyle = workbook.createCellStyle().apply {
             setFont(titleFont)
             alignment = HorizontalAlignment.CENTER
             verticalAlignment = VerticalAlignment.CENTER
-            fillForegroundColor = HSSFColor.HSSFColorPredefined.DARK_BLUE.index
+            fillForegroundColor = IndexedColors.DARK_BLUE.index
             fillPattern = FillPatternType.SOLID_FOREGROUND
         }
         val titleRow = sheet.createRow(0)
@@ -57,7 +68,7 @@ fun createFormattingSample(): ByteArray {
             setFont(headerFont)
             alignment = HorizontalAlignment.CENTER
             verticalAlignment = VerticalAlignment.CENTER
-            fillForegroundColor = HSSFColor.HSSFColorPredefined.GREY_25_PERCENT.index
+            fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
             fillPattern = FillPatternType.SOLID_FOREGROUND
             setBorderBottom(BorderStyle.MEDIUM)
             setBorderTop(BorderStyle.THIN)
@@ -89,7 +100,7 @@ fun createFormattingSample(): ByteArray {
         }
         val italicRed = workbook.createFont().apply {
             italic = true
-            color = HSSFColor.HSSFColorPredefined.DARK_RED.index
+            color = IndexedColors.DARK_RED.index
         }
         val italicRedStyle = workbook.createCellStyle().apply {
             setFont(italicRed)
@@ -184,12 +195,11 @@ fun createFormattingSample(): ByteArray {
     }
 }
 
-fun createLargeSample(): ByteArray {
-    val workbook = HSSFWorkbook()
+private fun createLargeSample(workbook: Workbook): ByteArray {
     try {
         val sheet = workbook.createSheet("50000 строк")
         val headerStyle = workbook.createCellStyle().apply {
-            fillForegroundColor = HSSFColor.HSSFColorPredefined.GREY_25_PERCENT.index
+            fillForegroundColor = IndexedColors.GREY_25_PERCENT.index
             fillPattern = FillPatternType.SOLID_FOREGROUND
             setFont(workbook.createFont().apply { bold = true })
         }
@@ -224,7 +234,7 @@ fun createLargeSample(): ByteArray {
     }
 }
 
-private fun write(workbook: HSSFWorkbook): ByteArray {
+private fun write(workbook: Workbook): ByteArray {
     val buffer = java.io.ByteArrayOutputStream()
     workbook.write(buffer)
     return buffer.toByteArray()

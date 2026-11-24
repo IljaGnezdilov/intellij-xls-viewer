@@ -55,7 +55,7 @@ class SheetModel(
 
     fun cell(row: Int, col: Int): CellModel? {
         if (row < 0 || row >= rowCount || col < 0 || col >= colCount) return null
-        return rows[row]?.cells?.getOrNull(col)
+        return rows[row]?.cellAt(col)
     }
 
     /** Merged region containing the given cell, if any. */

@@ -5,11 +5,11 @@
     <vendor url="https://c-prime.org" email="ilja_gnezdilov@mail.ru">c-prime</vendor>
 
     <description><![CDATA[
-        <p>Read-only XLS viewer with workbook diff.</p>
-        <p>Opens legacy Excel 97-2003 workbooks (<code>.xls</code>) and renders them the way Excel does:
-        fonts, fills, borders, alignment, text wrapping, merged cells, frozen panes, row heights,
-        column widths and number formats. Two workbooks can be compared side by side with change
-        markers, and unchanged rows and columns can be collapsed.</p>
+        <p>Read-only XLS/XLSX viewer with workbook diff.</p>
+        <p>Opens Excel workbooks (<code>.xls</code>, Excel 97-2003, and <code>.xlsx</code>) and renders them the way
+        Excel does: fonts, fills, borders, alignment, text wrapping, merged cells, frozen panes, row heights,
+        column widths, number formats, theme colors and colored sheet tabs. Two workbooks can be compared side
+        by side with change markers, and unchanged rows and columns can be collapsed.</p>
     ]]></description>
 
     <idea-version since-build="252"/>

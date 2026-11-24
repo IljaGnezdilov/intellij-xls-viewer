@@ -27,11 +27,11 @@ import java.time.ZoneId
 import java.util.Locale
 import kotlin.math.abs
 
-class XlsParserTest {
+class WorkbookParserTest {
 
     @Test
     fun `reads values, kinds and number formats`() {
-        val document = XlsParser.open(buildWorkbook(), Locale.US)
+        val document = WorkbookParser.open(buildWorkbook(), Locale.US)
         val sheet = document.sheets.single()
 
         val text = sheet.cell(0, 0)!!
@@ -62,7 +62,7 @@ class XlsParserTest {
 
     @Test
     fun `reads cell formatting`() {
-        val sheet = XlsParser.open(buildWorkbook(), Locale.US).sheets.single()
+        val sheet = WorkbookParser.open(buildWorkbook(), Locale.US).sheets.single()
         val cell = sheet.cell(0, 0)!!
         val style = sheet.styles[cell.styleId]
 
@@ -78,7 +78,7 @@ class XlsParserTest {
 
     @Test
     fun `reads geometry, merges and frozen panes`() {
-        val sheet = XlsParser.open(buildWorkbook(), Locale.US).sheets.single()
+        val sheet = WorkbookParser.open(buildWorkbook(), Locale.US).sheets.single()
 
         assertEquals("Данные", sheet.name)
         assertEquals(1, sheet.freezeRows)
@@ -96,8 +96,8 @@ class XlsParserTest {
 
     @Test
     fun `rejects files that are not OLE2 documents`() {
-        assertThrows(NotAnXlsFileException::class.java) {
-            XlsParser.open("just,some,text\n1,2,3".toByteArray())
+        assertThrows(NotAnExcelFileException::class.java) {
+            WorkbookParser.open("just,some,text\n1,2,3".toByteArray())
         }
     }
 
@@ -105,7 +105,7 @@ class XlsParserTest {
     fun `handles workbooks without sheets`() {
         val buffer = ByteArrayOutputStream()
         HSSFWorkbook().use { it.write(buffer) }
-        val document = XlsParser.open(buffer.toByteArray())
+        val document = WorkbookParser.open(buffer.toByteArray())
         assertTrue(document.sheets.isEmpty())
     }
 

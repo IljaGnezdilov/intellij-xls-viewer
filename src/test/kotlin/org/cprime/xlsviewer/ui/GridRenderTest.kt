@@ -1,8 +1,9 @@
 package org.cprime.xlsviewer.ui
 
 import com.intellij.ui.components.JBScrollPane
-import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.parse.WorkbookParser
 import org.cprime.xlsviewer.tools.createFormattingSample
+import org.cprime.xlsviewer.tools.createFormattingSampleXlsx
 import org.cprime.xlsviewer.tools.createLargeSample
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -25,15 +26,23 @@ class GridRenderTest {
 
     @Test
     fun `renders formatting sample`() {
-        val document = XlsParser.open(createFormattingSample(), Locale.US)
+        val document = WorkbookParser.open(createFormattingSample(), Locale.US)
         val image = render(document.sheets.first(), scrollY = 0)
         writeImage("formatting", image)
         assertTrue(distinctColors(image) > 12, "unexpectedly flat rendering")
     }
 
     @Test
+    fun `renders xlsx formatting sample`() {
+        val document = WorkbookParser.open(createFormattingSampleXlsx(), Locale.US)
+        val image = render(document.sheets.first(), scrollY = 0)
+        writeImage("formatting-xlsx", image)
+        assertTrue(distinctColors(image) > 12, "unexpectedly flat rendering")
+    }
+
+    @Test
     fun `renders scrolled sheet with frozen panes`() {
-        val document = XlsParser.open(createFormattingSample(), Locale.US)
+        val document = WorkbookParser.open(createFormattingSample(), Locale.US)
         val image = render(document.sheets.first(), scrollY = 120)
         writeImage("formatting-scrolled", image)
         assertTrue(distinctColors(image) > 12, "unexpectedly flat rendering")
@@ -41,7 +50,7 @@ class GridRenderTest {
 
     @Test
     fun `renders large sheet without loading it all`() {
-        val document = XlsParser.open(createLargeSample(), Locale.US)
+        val document = WorkbookParser.open(createLargeSample(), Locale.US)
         val sheet = document.sheets.first()
         val started = System.nanoTime()
         val image = render(sheet, scrollY = 200_000)

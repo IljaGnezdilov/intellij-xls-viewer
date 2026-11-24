@@ -3,8 +3,9 @@ package org.cprime.xlsviewer.diff
 import com.intellij.ui.components.JBScrollPane
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.cprime.xlsviewer.model.SheetTab
-import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.parse.WorkbookParser
 import org.cprime.xlsviewer.tools.createDiffPair
+import org.cprime.xlsviewer.tools.createDiffPairXlsx
 import org.cprime.xlsviewer.tools.createEmptyChangesPair
 import org.cprime.xlsviewer.ui.XlsColumnHeader
 import org.cprime.xlsviewer.ui.XlsCorner
@@ -39,6 +40,16 @@ class DiffRenderTest {
     fun `renders side by side diff with markers`() = render(zoom = 1f, name = "diff")
 
     @Test
+    fun `renders xlsx diff`() {
+        val (oldBytes, newBytes) = createDiffPairXlsx()
+        val diff = WorkbookDiffer.compare(
+            WorkbookParser.open(oldBytes, Locale.US),
+            WorkbookParser.open(newBytes, Locale.US),
+        )
+        renderDiff(diff, zoom = 1f, name = "diff-xlsx", collapsed = false, context = 1)
+    }
+
+    @Test
     fun `renders diff at 150 percent`() = render(zoom = 1.5f, name = "diff-150")
 
     @Test
@@ -48,8 +59,8 @@ class DiffRenderTest {
     fun `renders collapsed diff with gaps`() {
         val (oldBytes, newBytes) = createGapPair()
         val diff = WorkbookDiffer.compare(
-            XlsParser.open(oldBytes, Locale.US),
-            XlsParser.open(newBytes, Locale.US),
+            WorkbookParser.open(oldBytes, Locale.US),
+            WorkbookParser.open(newBytes, Locale.US),
         )
         renderDiff(diff, zoom = 1f, name = "diff-collapsed-gaps", collapsed = true, context = 0)
     }
@@ -57,8 +68,8 @@ class DiffRenderTest {
     @Test
     fun `renders empty cells hidden and shown`() {
         val (oldBytes, newBytes) = createEmptyChangesPair()
-        val left = XlsParser.open(oldBytes, Locale.US)
-        val right = XlsParser.open(newBytes, Locale.US)
+        val left = WorkbookParser.open(oldBytes, Locale.US)
+        val right = WorkbookParser.open(newBytes, Locale.US)
         renderDiff(
             WorkbookDiffer.compare(left, right),
             zoom = 1f,
@@ -79,8 +90,8 @@ class DiffRenderTest {
     fun `renders selected range`() {
         val (oldBytes, newBytes) = createDiffPair()
         val diff = WorkbookDiffer.compare(
-            XlsParser.open(oldBytes, Locale.US),
-            XlsParser.open(newBytes, Locale.US),
+            WorkbookParser.open(oldBytes, Locale.US),
+            WorkbookParser.open(newBytes, Locale.US),
         )
         renderDiff(
             diff,
@@ -95,8 +106,8 @@ class DiffRenderTest {
     private fun render(zoom: Float, name: String, collapsed: Boolean = false, context: Int = 1) {
         val (oldBytes, newBytes) = createDiffPair()
         val diff = WorkbookDiffer.compare(
-            XlsParser.open(oldBytes, Locale.US),
-            XlsParser.open(newBytes, Locale.US),
+            WorkbookParser.open(oldBytes, Locale.US),
+            WorkbookParser.open(newBytes, Locale.US),
         )
         renderDiff(diff, zoom, name, collapsed, context)
     }
