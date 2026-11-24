@@ -16,6 +16,7 @@ class XlsViewerSettings : PersistentStateComponent<XlsViewerSettings.State> {
         var showGridlines: Boolean = true
         var onlyDiffs: Boolean = true
         var diffContext: Int = 1
+        var showEmptyChanges: Boolean = false
         var files: MutableList<FileState> = mutableListOf()
     }
 

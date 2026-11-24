@@ -1,8 +1,10 @@
 package org.cprime.xlsviewer.tools
 
+import org.apache.poi.hssf.usermodel.HSSFCellStyle
 import org.apache.poi.hssf.usermodel.HSSFRow
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.hssf.util.HSSFColor
+import org.apache.poi.ss.usermodel.FillPatternType
 import java.io.ByteArrayOutputStream
 
 /**
@@ -78,6 +80,22 @@ fun createColumnAddedPair(): Pair<ByteArray, ByteArray> =
 fun createPartiallyChangedPair(): Pair<ByteArray, ByteArray> =
     buildPartiallyChanged(changed = false) to buildPartiallyChanged(changed = true)
 
+/** The new revision adds formatting-only and whitespace-only cells where the old one has none. */
+fun createEmptyCellsPair(): Pair<ByteArray, ByteArray> =
+    buildEmptyCells(blank = false) to buildEmptyCells(blank = true)
+
+/** The new revision adds a whole row and a whole column made of formatting-only cells. */
+fun createEmptyRowColumnPair(): Pair<ByteArray, ByteArray> =
+    buildEmptyRowColumn(blank = false) to buildEmptyRowColumn(blank = true)
+
+/** The new revision clears a value (the cell keeps its formatting). */
+fun createClearedValuePair(): Pair<ByteArray, ByteArray> =
+    buildClearedValue(cleared = false) to buildClearedValue(cleared = true)
+
+/** A realistic pair for render checks: one real change plus empty cells in every row. */
+fun createEmptyChangesPair(): Pair<ByteArray, ByteArray> =
+    buildEmptyChanges(blank = false) to buildEmptyChanges(blank = true)
+
 private fun buildRowAdded(added: Boolean): ByteArray {
     val workbook = HSSFWorkbook()
     try {
@@ -136,6 +154,97 @@ private fun buildPartiallyChanged(changed: Boolean): ByteArray {
         return write(workbook)
     } finally {
         workbook.close()
+    }
+}
+
+private fun buildEmptyCells(blank: Boolean): ByteArray {
+    val workbook = HSSFWorkbook()
+    try {
+        val sheet = workbook.createSheet("Empty")
+        val style = formattingOnlyStyle(workbook)
+        writeRow(sheet.createRow(0), "A", "B", "C")
+        val first = sheet.createRow(1)
+        first.createCell(0).setCellValue("a1")
+        first.createCell(2).setCellValue("c1")
+        if (blank) first.createCell(1).cellStyle = style
+        val second = sheet.createRow(2)
+        second.createCell(0).setCellValue("a2")
+        second.createCell(2).setCellValue("c2")
+        // Whitespace-only text is just as empty visually as a formatting-only cell.
+        if (blank) second.createCell(1).setCellValue(" ")
+        return write(workbook)
+    } finally {
+        workbook.close()
+    }
+}
+
+private fun buildEmptyRowColumn(blank: Boolean): ByteArray {
+    val workbook = HSSFWorkbook()
+    try {
+        val sheet = workbook.createSheet("Empty")
+        val style = formattingOnlyStyle(workbook)
+        writeRow(sheet.createRow(0), "A", "B")
+        writeRow(sheet.createRow(1), "a1", "b1")
+        writeRow(sheet.createRow(2), "a2", "b2")
+        if (blank) {
+            val extra = sheet.createRow(3)
+            extra.createCell(0).cellStyle = style
+            extra.createCell(1).cellStyle = style
+            for (rowIndex in 0..3) sheet.getRow(rowIndex).createCell(2).cellStyle = style
+        }
+        return write(workbook)
+    } finally {
+        workbook.close()
+    }
+}
+
+private fun buildClearedValue(cleared: Boolean): ByteArray {
+    val workbook = HSSFWorkbook()
+    try {
+        val sheet = workbook.createSheet("Empty")
+        val style = formattingOnlyStyle(workbook)
+        writeRow(sheet.createRow(0), "A", "B")
+        val row = sheet.createRow(1)
+        row.createCell(0).setCellValue("keep")
+        val cell = row.createCell(1)
+        if (cleared) cell.cellStyle = style else cell.setCellValue("gone")
+        return write(workbook)
+    } finally {
+        workbook.close()
+    }
+}
+
+private fun buildEmptyChanges(blank: Boolean): ByteArray {
+    val workbook = HSSFWorkbook()
+    try {
+        val sheet = workbook.createSheet("Empty")
+        val style = formattingOnlyStyle(workbook)
+        writeRow(sheet.createRow(0), "ID", "Name", "Value", "Comment")
+        for (index in 1..24) {
+            val row = sheet.createRow(index)
+            row.createCell(0).setCellValue(index.toDouble())
+            row.createCell(1).setCellValue("Row $index")
+            row.createCell(2).setCellValue(if (blank && index == 12) 999.0 else index * 1.5)
+            if (blank) {
+                if (index % 4 == 0) {
+                    row.createCell(3).setCellValue(" ")
+                } else {
+                    row.createCell(3).cellStyle = style
+                }
+            }
+        }
+        return write(workbook)
+    } finally {
+        workbook.close()
+    }
+}
+
+private fun formattingOnlyStyle(workbook: HSSFWorkbook): HSSFCellStyle {
+    val font = workbook.createFont().apply { italic = true }
+    return workbook.createCellStyle().apply {
+        setFont(font)
+        fillForegroundColor = HSSFColor.HSSFColorPredefined.GREY_25_PERCENT.index
+        fillPattern = FillPatternType.SOLID_FOREGROUND
     }
 }
 

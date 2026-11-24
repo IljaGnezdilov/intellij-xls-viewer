@@ -27,6 +27,11 @@ class SheetDiff(
     /** Changed cells only, in aligned coordinates. */
     val changedCells: Map<Long, DiffMark>,
     val changedCellCount: Int,
+    /**
+     * Cell differences that were suppressed because both sides are empty (a formatting-only
+     * cell against a missing cell and so on). Zero when empty changes are shown.
+     */
+    val ignoredEmptyCellCount: Int,
     val changedRowCount: Int,
     val addedRowCount: Int,
     val deletedRowCount: Int,
@@ -40,21 +45,31 @@ class SheetDiff(
 class WorkbookDiff(val sheets: List<SheetDiff>) {
     val changedSheetCount: Int get() = sheets.count { it.hasChanges }
     val changedCellCount: Int get() = sheets.sumOf { it.changedCellCount }
+    val ignoredEmptyCellCount: Int get() = sheets.sumOf { it.ignoredEmptyCellCount }
 }
 
 /**
  * Compares two workbooks. Sheets are matched by name, columns and rows are aligned with a
  * patience-style diff so that inserted/deleted columns and rows do not mark everything after
  * them as changed.
+ *
+ * With [compare]'s `ignoreEmptyChanges` (the default) cells that are empty on both sides -
+ * a formatting-only cell against a missing one, an empty formula result, whitespace-only
+ * text - are treated as equal: they get no marks, no counters and no collapsed-view rows.
+ * Rows and columns that exist on one side only are still reported even when they are empty.
  */
 object WorkbookDiffer {
 
-    fun compare(left: XlsDocument, right: XlsDocument): WorkbookDiff {
+    fun compare(
+        left: XlsDocument,
+        right: XlsDocument,
+        ignoreEmptyChanges: Boolean = true,
+    ): WorkbookDiff {
         val byName = LinkedHashMap<String, Pair<SheetModel?, SheetModel?>>()
         for (sheet in right.sheets) byName[sheet.name] = null to sheet
         for (sheet in left.sheets) byName[sheet.name] = sheet to byName[sheet.name]?.second
         val sheets = byName.map { (name, pair) ->
-            SheetDiffer.compare(name, pair.first, pair.second)
+            SheetDiffer.compare(name, pair.first, pair.second, ignoreEmptyChanges)
         }
         return WorkbookDiff(sheets)
     }
@@ -66,11 +81,12 @@ object SheetDiffer {
         name: String,
         left: SheetModel?,
         right: SheetModel?,
+        ignoreEmptyChanges: Boolean = true,
     ): SheetDiff {
         if (left == null && right == null) return emptyDiff(name)
         if (left == null) return oneSided(name, right!!, DiffMark.ADDED, rightSide = true)
         if (right == null) return oneSided(name, left, DiffMark.DELETED, rightSide = false)
-        return compareBoth(name, left, right)
+        return compareBoth(name, left, right, ignoreEmptyChanges)
     }
 
     private fun emptyDiff(name: String): SheetDiff = SheetDiff(
@@ -84,6 +100,7 @@ object SheetDiffer {
         colMarks = emptyArray(),
         changedCells = emptyMap(),
         changedCellCount = 0,
+        ignoredEmptyCellCount = 0,
         changedRowCount = 0,
         addedRowCount = 0,
         deletedRowCount = 0,
@@ -114,6 +131,7 @@ object SheetDiffer {
             colMarks = colMarks,
             changedCells = emptyMap(),
             changedCellCount = 0,
+            ignoredEmptyCellCount = 0,
             changedRowCount = 0,
             addedRowCount = if (mark == DiffMark.ADDED) usedRows else 0,
             deletedRowCount = if (mark == DiffMark.DELETED) usedRows else 0,
@@ -127,6 +145,7 @@ object SheetDiffer {
         name: String,
         left: SheetModel,
         right: SheetModel,
+        ignoreEmptyChanges: Boolean,
     ): SheetDiff {
         val leftUsedRows = left.usedRows.coerceIn(1, left.rowCount)
         val rightUsedRows = right.usedRows.coerceIn(1, right.rowCount)
@@ -135,10 +154,10 @@ object SheetDiffer {
 
         // Columns are matched by their header cell: the row with the most filled cells among
         // the first rows (handles merged title rows above the real header).
-        val leftHeaderRow = headerRowIndex(left, leftUsedRows)
-        val rightHeaderRow = headerRowIndex(right, rightUsedRows)
-        val leftColKeys = List(leftUsedCols) { headerKey(left, leftHeaderRow, it) }
-        val rightColKeys = List(rightUsedCols) { headerKey(right, rightHeaderRow, it) }
+        val leftHeaderRow = headerRowIndex(left, leftUsedRows, ignoreEmptyChanges)
+        val rightHeaderRow = headerRowIndex(right, rightUsedRows, ignoreEmptyChanges)
+        val leftColKeys = List(leftUsedCols) { headerKey(left, leftHeaderRow, it, ignoreEmptyChanges) }
+        val rightColKeys = List(rightUsedCols) { headerKey(right, rightHeaderRow, it, ignoreEmptyChanges) }
         val cols = align(leftColKeys, rightColKeys).map { ColPair(it.first, it.second) }
 
         val commonLeft = ArrayList<Int>(cols.size)
@@ -152,13 +171,14 @@ object SheetDiffer {
             }
         }
 
-        val leftRowKeys = List(leftUsedRows) { rowKey(left, it, commonLeft) }
-        val rightRowKeys = List(rightUsedRows) { rowKey(right, it, commonRight) }
+        val leftRowKeys = List(leftUsedRows) { rowKey(left, it, commonLeft, ignoreEmptyChanges) }
+        val rightRowKeys = List(rightUsedRows) { rowKey(right, it, commonRight, ignoreEmptyChanges) }
         val rows = align(leftRowKeys, rightRowKeys).map { RowPair(it.first, it.second) }
 
         val changedCells = HashMap<Long, DiffMark>()
         val rowHasChange = BooleanArray(rows.size)
         val colHasChange = BooleanArray(cols.size)
+        var ignoredEmptyCells = 0
 
         for ((rowIndex, rowPair) in rows.withIndex()) {
             val leftRow = rowPair.left
@@ -175,6 +195,12 @@ object SheetDiffer {
                 val a = leftRowModel?.cells?.getOrNull(leftCol)
                 val b = rightRowModel?.cells?.getOrNull(rightCol)
                 if (a == null && b == null) continue
+                if (ignoreEmptyChanges && isEmptyCell(a) && isEmptyCell(b)) {
+                    // A formatting-only cell against a missing one (or an empty formula result,
+                    // whitespace-only text...): structurally different, visually identical.
+                    if (!cellsEqual(a, b)) ignoredEmptyCells++
+                    continue
+                }
                 if (!cellsEqual(a, b)) {
                     changedCells[CellRange.keyOf(rowIndex, colIndex)] = DiffMark.CHANGED
                     rowHasChange[rowIndex] = true
@@ -214,6 +240,7 @@ object SheetDiffer {
             colMarks = colMarks,
             changedCells = changedCells,
             changedCellCount = changedCells.size,
+            ignoredEmptyCellCount = ignoredEmptyCells,
             changedRowCount = rowMarks.count { it == DiffMark.CHANGED },
             addedRowCount = rowMarks.count { it == DiffMark.ADDED },
             deletedRowCount = rowMarks.count { it == DiffMark.DELETED },
@@ -232,13 +259,13 @@ object SheetDiffer {
     private fun mix(hash: Long, value: Int): Long = (hash xor value.toLong()) * PRIME
 
 
-    private fun headerRowIndex(sheet: SheetModel, usedRows: Int): Int {
+    private fun headerRowIndex(sheet: SheetModel, usedRows: Int, ignoreEmptyChanges: Boolean): Int {
         var bestRow = -1
         var bestCount = 0
         val limit = minOf(usedRows, HEADER_SCAN_ROWS)
         for (row in 0 until limit) {
             val cells = sheet.rows.getOrNull(row)?.cells ?: continue
-            val count = cells.count { it != null }
+            val count = cells.count { it != null && (!ignoreEmptyChanges || !it.isEmpty) }
             if (count > bestCount) {
                 bestCount = count
                 bestRow = row
@@ -247,24 +274,30 @@ object SheetDiffer {
         return bestRow
     }
 
-    private fun headerKey(sheet: SheetModel, headerRow: Int, col: Int): Long {
+    private fun headerKey(sheet: SheetModel, headerRow: Int, col: Int, ignoreEmptyChanges: Boolean): Long {
         if (headerRow < 0) return SEED
         val cell = sheet.rows.getOrNull(headerRow)?.cells?.getOrNull(col) ?: return SEED
+        if (ignoreEmptyChanges && cell.isEmpty) return SEED
         var hash = mix(SEED, cell.kind.ordinal)
         hash = mix(hash, cell.text.hashCode())
         return hash
     }
 
-    private fun rowKey(sheet: SheetModel, row: Int, cols: List<Int>): Long {
+    private fun rowKey(sheet: SheetModel, row: Int, cols: List<Int>, ignoreEmptyChanges: Boolean): Long {
         val rowModel = sheet.rows.getOrNull(row)
         var hash = SEED
         for (col in cols) {
-            val cell = rowModel?.cells?.getOrNull(col)
+            val raw = rowModel?.cells?.getOrNull(col)
+            // Empty cells hash like missing ones, so rows that differ only in formatting-only
+            // cells are not treated as different rows during alignment.
+            val cell = if (ignoreEmptyChanges && raw != null && raw.isEmpty) null else raw
             hash = mix(hash, cell?.kind?.ordinal ?: -1)
             hash = mix(hash, cell?.text?.hashCode() ?: 0)
         }
         return hash
     }
+
+    private fun isEmptyCell(cell: CellModel?): Boolean = cell == null || cell.isEmpty
 
     private fun cellsEqual(left: CellModel?, right: CellModel?): Boolean {
         if (left == null && right == null) return true

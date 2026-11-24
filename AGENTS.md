@@ -32,7 +32,12 @@ IntelliJ IDEA 2025.2+ (`since-build=252`), i.e. 2025.2 through 2026.3 and newer.
   - the `▲▼◀▶` navigation pad is one 2×2 block without gaps (50×50, four 25×25 cells);
   - diff markers: yellow = changed, green = added, red = deleted;
   - outlines only on changed cells; added/deleted rows and columns get hatched fill, not outlines;
-  - "Only changes" is on by default with context 1 and is persisted between sessions.
+  - "Only changes" is on by default with context 1 and is persisted between sessions;
+  - empty changes (both cells empty: formatting-only, empty formula result, whitespace-only
+    text) are hidden by default - not marked, not counted, not kept visible in "Only
+    changes" - and the status bar reports how many were hidden. The "Show empty changes"
+    checkbox (off by default, persisted) brings the old behaviour back. Added/deleted rows
+    and columns are always shown, even when empty (`ignoreEmptyChanges` in `SheetDiffer`).
 
 ## Environment
 
@@ -127,11 +132,12 @@ it), and leave `plugin.xml` alone. `pluginConfiguration.id/name` are still requi
 
 ## Tests and visual artifacts
 
-- 33 tests. Plain logic tests use JUnit 5; platform tests extend `BasePlatformTestCase`
+- 38 tests. Plain logic tests use JUnit 5; platform tests extend `BasePlatformTestCase`
   (JUnit 4 + `testFramework(TestFrameworkType.Platform)`).
 - After any rendering or diff-mark change, run `test` and inspect
   `build/reports/render/*.png` (`formatting`, `large`, `diff`, `diff-selection`,
-  `diff-collapsed`, `diff-collapsed-gaps`, `diff-150`). These are generated offscreen and are
+  `diff-collapsed`, `diff-collapsed-gaps`, `diff-150`, `diff-empty-hidden`,
+  `diff-empty-shown`). These are generated offscreen and are
   the fastest way to check visuals without launching the IDE.
 - Public screenshots for the README are `docs/viewer.png` and `docs/diff.png` and are tracked.
   `docs/marketplace/` (raw shots and normalized 1600×800 Marketplace images) is gitignored and

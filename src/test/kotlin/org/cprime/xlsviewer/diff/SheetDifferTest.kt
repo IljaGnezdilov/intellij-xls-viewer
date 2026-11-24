@@ -3,7 +3,10 @@
 import org.cprime.xlsviewer.model.CellRange
 import org.cprime.xlsviewer.model.DiffMark
 import org.cprime.xlsviewer.parse.XlsParser
+import org.cprime.xlsviewer.tools.createClearedValuePair
 import org.cprime.xlsviewer.tools.createDiffPair
+import org.cprime.xlsviewer.tools.createEmptyCellsPair
+import org.cprime.xlsviewer.tools.createEmptyRowColumnPair
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -95,11 +98,63 @@ class SheetDifferTest {
         assertEquals(2, rightMarks.displayCol(2))
     }
 
-    private fun compare(): WorkbookDiff {
-        val (oldBytes, newBytes) = createDiffPair()
-        return WorkbookDiffer.compare(
-            XlsParser.open(oldBytes, Locale.US),
-            XlsParser.open(newBytes, Locale.US),
-        )
+    @Test
+    fun `empty cells are ignored by default`() {
+        val diff = comparePair(createEmptyCellsPair(), ignoreEmptyChanges = true)
+        val sheet = diff.sheets.single()
+
+        assertFalse(sheet.hasChanges)
+        assertEquals(0, sheet.changedCellCount)
+        assertEquals(2, sheet.ignoredEmptyCellCount)
+        assertEquals(2, diff.ignoredEmptyCellCount)
+        assertTrue(sheet.rowMarks.all { it == null })
+        assertTrue(sheet.colMarks.all { it == null })
+        assertEquals(3, sheet.rows.size)
+        assertEquals(3, sheet.cols.size)
     }
+
+    @Test
+    fun `showing empty changes restores their marks`() {
+        val sheet = comparePair(createEmptyCellsPair(), ignoreEmptyChanges = false).sheets.single()
+
+        assertEquals(DiffMark.CHANGED, sheet.mark)
+        assertEquals(2, sheet.changedCellCount)
+        assertEquals(0, sheet.ignoredEmptyCellCount)
+        assertEquals(2, sheet.changedRowCount)
+        assertEquals(1, sheet.changedColCount)
+    }
+
+    @Test
+    fun `cleared value stays a change when empty changes are hidden`() {
+        val sheet = comparePair(createClearedValuePair(), ignoreEmptyChanges = true).sheets.single()
+
+        assertEquals(DiffMark.CHANGED, sheet.mark)
+        assertEquals(1, sheet.changedCellCount)
+        assertEquals(setOf(CellRange.keyOf(1, 1)), sheet.changedCells.keys)
+        assertEquals(0, sheet.ignoredEmptyCellCount)
+    }
+
+    @Test
+    fun `added empty rows and columns stay visible`() {
+        val sheet = comparePair(createEmptyRowColumnPair(), ignoreEmptyChanges = true).sheets.single()
+
+        assertEquals(DiffMark.CHANGED, sheet.mark)
+        assertEquals(0, sheet.changedCellCount)
+        assertEquals(1, sheet.addedRowCount)
+        assertEquals(1, sheet.addedColCount)
+        assertEquals(0, sheet.changedRowCount)
+        assertEquals(0, sheet.changedColCount)
+        assertEquals(0, sheet.ignoredEmptyCellCount)
+        assertEquals(4, sheet.rows.size)
+        assertEquals(3, sheet.cols.size)
+    }
+
+    private fun compare(): WorkbookDiff = comparePair(createDiffPair(), ignoreEmptyChanges = true)
+
+    private fun comparePair(pair: Pair<ByteArray, ByteArray>, ignoreEmptyChanges: Boolean): WorkbookDiff =
+        WorkbookDiffer.compare(
+            XlsParser.open(pair.first, Locale.US),
+            XlsParser.open(pair.second, Locale.US),
+            ignoreEmptyChanges = ignoreEmptyChanges,
+        )
 }

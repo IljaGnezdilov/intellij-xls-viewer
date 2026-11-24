@@ -92,6 +92,7 @@ class XlsDiffPanel(
     private val sheetCombo = JComboBox<SheetItem>()
     private val onlyDiffsToggle = JCheckBox(XlsViewerBundle.message("diff.onlyDiffs"))
     private val contextCombo = JComboBox(arrayOf(0, 1, 2, 3))
+    private val emptyChangesToggle = JCheckBox(XlsViewerBundle.message("diff.showEmptyChanges"))
     private val statsLabel = JBLabel("")
     private val statusLabel = JBLabel("")
     private val zoomLabel = JBLabel("100%")
@@ -107,9 +108,12 @@ class XlsDiffPanel(
     private var leftDocument: XlsDocument? = null
     private var rightDocument: XlsDocument? = null
     private var workbookDiff: WorkbookDiff? = null
+    /** Diff per "show empty changes" mode; the comparison itself is deterministic. */
+    private val diffCache = HashMap<Boolean, WorkbookDiff>()
     private var sheetIndex = 0
     private var onlyDiffs = XlsViewerSettings.getInstance().state.onlyDiffs
     private var diffContext = XlsViewerSettings.getInstance().state.diffContext.coerceIn(0, 3)
+    private var showEmptyChanges = XlsViewerSettings.getInstance().state.showEmptyChanges
     private var zoom = 1f
     private var updatingUi = false
     private var syncingScroll = false
@@ -170,6 +174,21 @@ class XlsDiffPanel(
         }
         left.add(JBLabel(XlsViewerBundle.message("diff.context")))
         left.add(contextCombo)
+
+        emptyChangesToggle.isFocusable = false
+        emptyChangesToggle.isSelected = showEmptyChanges
+        emptyChangesToggle.toolTipText = XlsViewerBundle.message("diff.showEmptyChanges.tooltip")
+        emptyChangesToggle.addActionListener {
+            if (updatingUi) return@addActionListener
+            showEmptyChanges = emptyChangesToggle.isSelected
+            XlsViewerSettings.getInstance().state.showEmptyChanges = showEmptyChanges
+            val leftDocs = leftDocument ?: return@addActionListener
+            val rightDocs = rightDocument ?: return@addActionListener
+            workbookDiff = diffFor(leftDocs, rightDocs, showEmptyChanges)
+            updateStats()
+            applyDisplayOptions()
+        }
+        left.add(emptyChangesToggle)
 
         val right = JPanel(FlowLayout(FlowLayout.RIGHT, 4, 0))
         right.add(createSquareButton("\u2212", XlsViewerBundle.message("diff.zoomOut")) { changeZoom(-1) })
@@ -415,6 +434,7 @@ class XlsDiffPanel(
         showCard(CARD_LOADING)
         failureSide = SIDE_NONE
         workingCopyFile = null
+        diffCache.clear()
         openWorkingCopyButton.isVisible = false
         startSlowHint()
         LOG.info("XLS diff started: left=\"$leftTitle\" (${leftContent.javaClass.simpleName}), right=\"$rightTitle\" (${rightContent.javaClass.simpleName})")
@@ -473,10 +493,11 @@ class XlsDiffPanel(
         leftDocument = left
         rightDocument = right
         val startedAt = System.nanoTime()
-        val diff = WorkbookDiffer.compare(left, right)
+        val diff = diffFor(left, right, showEmptyChanges)
         LOG.info(
             "XLS diff ready: ${left.sheets.size}/${right.sheets.size} sheet(s), " +
                 "${diff.sheets.size} compared, ${diff.changedCellCount} changed cell(s), " +
+                "${diff.ignoredEmptyCellCount} empty hidden, " +
                 "diff took ${millis(System.nanoTime() - startedAt)} ms",
         )
         workbookDiff = diff
@@ -486,6 +507,11 @@ class XlsDiffPanel(
         applySheet(first)
         showCard(CARD_DIFF)
     }
+
+    private fun diffFor(left: XlsDocument, right: XlsDocument, showEmpty: Boolean): WorkbookDiff =
+        diffCache.getOrPut(showEmpty) {
+            WorkbookDiffer.compare(left, right, ignoreEmptyChanges = !showEmpty)
+        }
 
     private fun showError(throwable: Throwable) {
         stopSlowHint()
@@ -688,13 +714,18 @@ class XlsDiffPanel(
         val diff = workbookDiff ?: return
         val changedRows = diff.sheets.sumOf { it.changedRowCount + it.addedRowCount + it.deletedRowCount }
         val changedColumns = diff.sheets.sumOf { it.changedColCount + it.addedColCount + it.deletedColCount }
-        statsLabel.text = XlsViewerBundle.message(
+        val stats = XlsViewerBundle.message(
             "diff.stats",
             diff.changedCellCount,
             changedRows,
             changedColumns,
             diff.changedSheetCount,
         )
+        statsLabel.text = if (diff.ignoredEmptyCellCount > 0) {
+            stats + " " + XlsViewerBundle.message("diff.stats.empty", diff.ignoredEmptyCellCount)
+        } else {
+            stats
+        }
     }
 
     private fun updateStatus() {

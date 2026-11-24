@@ -5,6 +5,7 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.cprime.xlsviewer.model.SheetTab
 import org.cprime.xlsviewer.parse.XlsParser
 import org.cprime.xlsviewer.tools.createDiffPair
+import org.cprime.xlsviewer.tools.createEmptyChangesPair
 import org.cprime.xlsviewer.ui.XlsColumnHeader
 import org.cprime.xlsviewer.ui.XlsCorner
 import org.cprime.xlsviewer.ui.XlsGridComponent
@@ -51,6 +52,27 @@ class DiffRenderTest {
             XlsParser.open(newBytes, Locale.US),
         )
         renderDiff(diff, zoom = 1f, name = "diff-collapsed-gaps", collapsed = true, context = 0)
+    }
+
+    @Test
+    fun `renders empty cells hidden and shown`() {
+        val (oldBytes, newBytes) = createEmptyChangesPair()
+        val left = XlsParser.open(oldBytes, Locale.US)
+        val right = XlsParser.open(newBytes, Locale.US)
+        renderDiff(
+            WorkbookDiffer.compare(left, right),
+            zoom = 1f,
+            name = "diff-empty-hidden",
+            collapsed = true,
+            context = 1,
+        )
+        renderDiff(
+            WorkbookDiffer.compare(left, right, ignoreEmptyChanges = false),
+            zoom = 1f,
+            name = "diff-empty-shown",
+            collapsed = true,
+            context = 1,
+        )
     }
 
     @Test

@@ -90,6 +90,12 @@ comparison in the IDE.
   sheet list contain only sheets with changes, and skipped ranges are marked
   with a dashed line and `⋮` / `⋯` symbols. The mode is on by default
   (context 1), and the selected value is remembered.
+- **"Show empty changes"** — off by default: differences where both cells are
+  empty (a formatting-only cell against a missing one, an empty formula result,
+  whitespace-only text) are not marked, not counted and do not keep rows or
+  columns visible in the collapsed view. The status bar reports how many empty
+  differences were hidden. Added and deleted rows/columns are always shown, even
+  when they contain no values. Enable the checkbox to see the empty differences.
 - Zoom 50–300 % — applied to both panes at once.
 - Clicking a row or column header puts the cursor at the first change in that
   row/column (for added/deleted ones — at the first marked cell).
