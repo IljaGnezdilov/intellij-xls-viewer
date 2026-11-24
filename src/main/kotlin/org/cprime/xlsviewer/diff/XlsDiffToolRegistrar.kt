@@ -25,7 +25,14 @@ class XlsDiffToolRegistrar : ProjectActivity {
         val application = ApplicationManager.getApplication() ?: return
         if (registered) return
         registered = true
-        DiffTool.EP_NAME.point.registerExtension(XlsDiffTool(), LoadingOrder.FIRST, application)
+        // `diff.DiffTool` change listeners require the EDT (an open diff window keeps one, see
+        // `DiffRequestProcessor.readToolOrderFromSettings`), while project activities run on a
+        // background coroutine. Register on the EDT so a runtime plugin install/update does not
+        // throw "Access is allowed from Event Dispatch Thread (EDT) only".
+        val action = Runnable {
+            DiffTool.EP_NAME.point.registerExtension(XlsDiffTool(), LoadingOrder.FIRST, application)
+        }
+        if (application.isDispatchThread) action.run() else application.invokeAndWait(action)
     }
 
     private companion object {
